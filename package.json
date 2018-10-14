@@ -23,7 +23,8 @@
     "mongoose": "^5.3.3",
     "morgan": "^1.9.1",
     "nodemon": "^1.18.4",
-    "pg": "^7.5.0"
+    "pg": "^7.5.0",
+    "dotenv": "latest"
   },
   "devDependencies": {
     "chai": "^4.2.0",

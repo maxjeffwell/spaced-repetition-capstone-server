@@ -3,14 +3,16 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose; // Schema tells Mongoose about particular fields model will have
 
+const bcrypt = require('bcryptjs');
+
 const userSchema = new Schema({
     firstName: {
         type: String,
-        required: true,
+        required: true
     },
     lastName: {
         type: String,
-        required: true,
+        required: true
     },
     username: {
         type: String,
@@ -21,8 +23,41 @@ const userSchema = new Schema({
         type: String,
         required: true
     }
+});
 
-})
+
+userSchema.pre('save', function (next) {
+    const user = this; // get access to user model; user is an instance of the user model at this point
+
+    // generate a salt (takes time, so then run callback)
+
+    bcrypt.genSalt(10, function (err, salt) {
+        if (err) {
+            return next(err);
+        }
+
+        // hash password using the salt
+
+        bcrypt.hash(user.password, salt, function (err, hash) {
+            if (err) {
+                return next(err);
+            }
+
+            // overwrite plain text password with encrypted password
+
+            user.password = hash;
+            next();
+        });
+    });
+});
+
+userSchema.methods.comparePassword = function(candidatePassword, callback) {
+    bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
+        if (err) {
+            return callback(err);
+        } callback(null, isMatch);
+    });
+}
 
 const UserClass = mongoose.model('user', userSchema);
 

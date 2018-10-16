@@ -25,39 +25,23 @@ const userSchema = new Schema({
     }
 });
 
-
-userSchema.pre('save', function (next) {
-    const user = this; // get access to user model; user is an instance of the user model at this point
-
-    // generate a salt (takes time, so then run callback)
-
-    bcrypt.genSalt(10, function (err, salt) {
-        if (err) {
-            return next(err);
-        }
-
-        // hash password using the salt
-
-        bcrypt.hash(user.password, salt, function (err, hash) {
-            if (err) {
-                return next(err);
-            }
-
-            // overwrite plain text password with encrypted password
-
-            user.password = hash;
-            next();
-        });
-    });
+userSchema.set('toObject', {
+    virtuals: true,
+    transform: (doc, result) => {
+        delete result._id;
+        delete result.__v;
+        delete result.password;
+    }
 });
 
-userSchema.methods.comparePassword = function(candidatePassword, callback) {
-    bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
-        if (err) {
-            return callback(err);
-        } callback(null, isMatch);
-    });
-}
+userSchema.methods.validatePassword = function (pwd) {
+    const currentUser = this;
+    return bcrypt.compare(pwd, currentUser.password);
+};
+
+userSchema.statics.hashPassword = function (pwd) {
+    return bcrypt.hash(pwd, 10);
+};
 
 const UserClass = mongoose.model('user', userSchema);
 

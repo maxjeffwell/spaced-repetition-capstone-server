@@ -8,7 +8,6 @@ const passport = require('passport');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
-// const {dbConnect} = require('./db-knex');
 const localStrategy = require('./auth/passport');
 const jwtStrategy = require('./auth/passport');
 
@@ -35,9 +34,10 @@ app.use(
 passport.use(jwtStrategy);
 passport.use(localStrategy);
 
+app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', authRouter);
-app.use('/api/questions', questionsRouter);
+
 
 app.use((req, res, next) => {
   const err = new Error ('Not found');

@@ -24,6 +24,19 @@ const userSchema = new Schema({
   password: {
     type: String,
     required: true
+  },
+  questions: [
+    {
+      _id: mongoose.Schema.Types.ObjectId,
+      question: String,
+      answer: String,
+      memoryStrength: Number,
+      next: Number
+    }
+  ],
+  head: {
+    type: Number,
+    default: 0
   }
 });
 

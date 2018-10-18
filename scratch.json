@@ -1,0 +1,54 @@
+[
+  {
+    "question": "blah?",
+    "answer": "answer blah",
+    "next": 6
+  6  //strings, numberrs, arrays of those values, object with those values
+  },
+  {
+    "question": "blah2?",
+    "answer": "answer blah2",
+    "next": {"question": "blah3?"}
+
+  }
+]
+
+
+<p>{`Question: ${this.props.protectedData[head].question}`}</p>
+
+initialState =
+
+when a user registers, questions are loaded in, head defaults to 0 (1st question in array, right?--whatever head points to is the question displayed) 
+
+username: {
+  type: String
+},
+password: {
+  type: String
+},
+questions: [
+  {
+      _id: mongoose.Schema.Types.ObjectId,
+      question: String,
+      answer: String,
+      memoryStrength: Number,
+      next: Number
+  }
+],
+head: {
+  type: Number,
+  default: 0
+}
+});
+
+upon log in, instead of fetching to questions, fetch to '/next' endpoint.  Need to write an endpoint on the server side for this.  Make sure code displays what is head is pointing to.
+
+When user submits answer, m value will change and next value will change.  This needs to be updated on the database, so fetch with patch method will be needed.  need to write a patch endpoint on server side for this
+
+
+
+//save the value of the current head
+currentHead.value
+
+//save the node that you just answered
+justAnsweredNode

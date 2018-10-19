@@ -3,6 +3,7 @@
 const express = require('express');
 
 const User = require('../models/user');
+const Question = require('../models/question');
 
 const router = express.Router();
 
@@ -74,17 +75,27 @@ router.post('/', (req, res, next) => {
   firstName = firstName.trim();
   lastName = lastName.trim();
 
-  return User.hashPassword(password)
-    .then(digest => {
+  // return Question.find()
+  //   .then(results => {
+  //     res.json(results);
+  //   })
+  //   .catch(err => {
+  //     next(err);
+  //   });
+
+  return Promise.all([User.hashPassword(password), Question.find()])
+    .then(([digest, results]) => {
       const newUser = {
         firstName,
         lastName,
         username,
-        password: digest
+        password: digest,
+        questions: results,
       };
       return User.create(newUser);
     })
     .then(result => {
+      console.log(result);
       return res.status(201).location(`/api/users/${result.id}`).json(result);
     })
     .catch(err => {

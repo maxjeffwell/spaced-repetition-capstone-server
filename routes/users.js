@@ -7,7 +7,15 @@ const Question = require('../models/question');
 
 const router = express.Router();
 
-/* ========== POST/CREATE AN ITEM ========== */
+router.get('/:id', (req, res, next) => {
+    let id = req.params.id;
+    User.findById(id, 'questions')
+        .then(results => {
+            res.json(results);
+        })
+        .catch(err => next(err));
+});
+
 router.post('/', (req, res, next) => {
 
   /***** Never trust users - validate input *****/
@@ -71,17 +79,11 @@ router.post('/', (req, res, next) => {
   }
 
   // Username and password were validated as pre-trimmed
-  let { username, password, firstName, lastName = '' } = req.body;
+
+    let { username, password, firstName, lastName = '' } = req.body;
   firstName = firstName.trim();
   lastName = lastName.trim();
 
-  // return Question.find()
-  //   .then(results => {
-  //     res.json(results);
-  //   })
-  //   .catch(err => {
-  //     next(err);
-  //   });
 
   return Promise.all([User.hashPassword(password), Question.find()])
     .then(([digest, results]) => {
@@ -105,6 +107,41 @@ router.post('/', (req, res, next) => {
       }
       next(err);
     });
+});
+
+/* ========== PATCH/UPDATE A SINGLE ITEM/particular fields ========== */
+
+router.patch('/:id', (req, res, next) => {
+    const { id } = req.params;
+
+    const toUpdate = {};
+    const updateableFields = [ head, next, memoryStrength ];
+
+    updateableFields.forEach(field => {
+        if (field in req.body) {
+            toUpdate[field] = req.body[field];
+        }
+    });
+
+    /***** Never trust users - validate input *****/
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        const err = new Error('The `id` is not valid');
+        err.status = 400;
+        return next(err);
+    }
+
+    User.findByIdAndUpdate({ _id: id }, toUpdate, { new: true })
+        .then(result => {
+            if (result) {
+                res.json(result);
+            } else {
+                next();
+            }
+        })
+        .catch(err => {
+            next(err);
+        });
 });
 
 module.exports = router;

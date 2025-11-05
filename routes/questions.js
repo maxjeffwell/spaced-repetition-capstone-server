@@ -95,8 +95,9 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       // Process answer with algorithm manager (with optional ML model)
       const result = await processAnswer(user, questionIndex, isCorrect, responseTime, mlModel);
 
-      // Save updated user
-      return User.findByIdAndUpdate(userId, result.user, { new: true })
+      // Save updated user (user object was modified in-place by processAnswer)
+      // Skip validation since data is already validated by processAnswer
+      return result.user.save({ validateBeforeSave: false })
         .then(updatedUser => {
           res.json({
             correct: isCorrect,

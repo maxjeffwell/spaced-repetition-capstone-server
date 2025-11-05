@@ -45,6 +45,19 @@ async function exportModelForBrowser(modelPath = 'ml/saved-model', outputDir = '
   console.log(`   Features: 8 dimensions`);
   console.log(`   Output: 1 dimension (interval in days)`);
 
+  // Extract layer names from topology and create proper weight names
+  const layers = modelData.modelTopology.config.layers.filter(layer =>
+    layer.class_name === 'Dense'
+  );
+
+  const weightNames = [];
+  layers.forEach(layer => {
+    weightNames.push(`${layer.config.name}/kernel`);
+    if (layer.config.use_bias) {
+      weightNames.push(`${layer.config.name}/bias`);
+    }
+  });
+
   // Create browser-compatible model manifest
   const browserModel = {
     format: 'layers-model',
@@ -54,7 +67,7 @@ async function exportModelForBrowser(modelPath = 'ml/saved-model', outputDir = '
     weightsManifest: [{
       paths: ['weights.bin'],
       weights: modelData.weightsManifest.map((w, i) => ({
-        name: `weight_${i}`,
+        name: weightNames[i],
         shape: w.shape,
         dtype: 'float32'
       }))

@@ -22,34 +22,4 @@ services:
         value: 7d
     autoDeploy: true
 
-  # Frontend (React + TensorFlow.js WebGPU)
-  - type: web
-    name: spaced-repetition-client
-    runtime: static
-    rootDir: spaced-repetition-capstone-client
-    buildCommand: npm install
-    staticPublishPath: build
-    pullRequestPreviewsEnabled: true
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Cross-Origin-Embedder-Policy
-        value: require-corp
-      - path: /*
-        name: Cross-Origin-Opener-Policy
-        value: same-origin
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: REACT_APP_API_BASE_URL
-        sync: false
-      - key: NODE_ENV
-        value: production
-    autoDeploy: true
+

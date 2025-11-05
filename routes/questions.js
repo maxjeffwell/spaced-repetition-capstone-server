@@ -6,6 +6,7 @@ const passport = require('passport');
 const User = require('../models/user');
 const { getNextQuestion } = require('../utils/question-helpers');
 const { processAnswer, getAlgorithmComparison, checkMLReadiness } = require('../algorithms/algorithm-manager');
+const mlService = require('../ml/ml-service');
 
 const router = express.Router();
 
@@ -88,8 +89,11 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       const correctAnswer = question.answer.trim().toLowerCase();
       const isCorrect = userAnswer === correctAnswer;
 
-      // Process answer with algorithm manager
-      const result = await processAnswer(user, questionIndex, isCorrect, responseTime);
+      // Get ML model if available
+      const mlModel = mlService.getModel();
+
+      // Process answer with algorithm manager (with optional ML model)
+      const result = await processAnswer(user, questionIndex, isCorrect, responseTime, mlModel);
 
       // Save updated user
       return User.findByIdAndUpdate(userId, result.user, { new: true })

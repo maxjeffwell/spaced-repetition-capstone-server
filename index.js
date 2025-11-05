@@ -9,6 +9,7 @@ const passport = require('passport');
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
 const { localStrategy, jwtStrategy } = require('./auth/passport');
+const mlService = require('./ml/ml-service');
 
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
@@ -68,6 +69,11 @@ function runServer(port = PORT) {
 if (require.main === module) {
   dbConnect();
   runServer();
+
+  // Initialize ML model asynchronously (non-blocking)
+  mlService.initialize().catch(err => {
+    console.error('Failed to initialize ML service:', err.message);
+  });
 }
 
 module.exports = { app };

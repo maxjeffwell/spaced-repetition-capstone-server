@@ -114,22 +114,25 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
 }
 
 /**
- * Predict interval using ML model (placeholder for now)
- * Will be implemented when ML model is trained
+ * Predict interval using ML model
  *
  * @param {Object} question - Question to predict for
- * @param {Object} mlModel - Trained ML model
- * @returns {Object} Prediction with interval and confidence
+ * @param {Object} mlModel - Trained ML model instance
+ * @returns {Object} Prediction with interval
  */
 async function predictMLInterval(question, mlModel) {
-  // TODO: Implement actual ML prediction using TensorFlow.js
-  // For now, return baseline as placeholder
+  const { createFeatureVector } = require('../utils/question-helpers');
 
-  // This will be replaced with:
-  // const features = createFeatureVector(question);
-  // const prediction = await mlModel.predict(features);
+  // Create feature vector from question
+  const features = createFeatureVector(question);
 
-  throw new Error('ML model not yet implemented');
+  // Predict optimal interval
+  const interval = mlModel.predict(features);
+
+  return {
+    interval,
+    confidence: null // Could add confidence intervals in future
+  };
 }
 
 /**

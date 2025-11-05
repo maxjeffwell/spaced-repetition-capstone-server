@@ -3,8 +3,8 @@ services:
   - type: web
     name: spaced-repetition-api
     runtime: node
-    buildCommand: cd spaced-repetition-capstone-server && npm install
-    startCommand: cd spaced-repetition-capstone-server && npm run heroku
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     healthCheckPath: /api
     envVars:
       - key: NODE_ENV
@@ -25,7 +25,7 @@ services:
   - type: web
     name: spaced-repetition-client
     runtime: static
-    buildCommand: cd spaced-repetition-capstone-client && npm install && npm run build
+    buildCommand: npm run build
     staticPublishPath: spaced-repetition-capstone-client/build
     pullRequestPreviewsEnabled: true
     headers:

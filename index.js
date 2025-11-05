@@ -8,8 +8,7 @@ const passport = require('passport');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
-const localStrategy = require('./auth/passport');
-const jwtStrategy = require('./auth/passport');
+const { localStrategy, jwtStrategy } = require('./auth/passport');
 
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
@@ -45,7 +44,8 @@ app.use((req, res, next) => {
   next(err);
 });
 
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
+  console.error(err);
   if (err.status) {
     const errBody = Object.assign({}, err, { message: err.message });
     res.status(err.status).json(errBody);

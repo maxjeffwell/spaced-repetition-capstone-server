@@ -8,7 +8,7 @@ const users = [
     firstName: 'Demo',
     lastName: 'User',
     username: 'demo',
-    password: '$2a$10$qLXLVD4FvqHYZLVY9XjDy.Y.qzTb5eqQGqC1nh/QqVBZQvBrUPvyS', // 'password'
+    password: '$2a$10$jc4tXnNG3jgzpXIaWNwuEuDycTV1xWttKb446SsWX52ksso1.Qxai', // 'password'
     questions: createQuestions(),
     head: 0,
     settings: {

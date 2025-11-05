@@ -3,7 +3,7 @@
 const { Strategy: JwtStrategy, ExtractJwt } = require('passport-jwt');
 const { Strategy: LocalStrategy } = require('passport-local');
 const User = require('../models/user');
-const JWT_SECRET = require('../config');
+const { JWT_SECRET } = require('../config');
 
 
 const options = {
@@ -48,5 +48,5 @@ const localStrategy = new LocalStrategy((username, password, done) => {
     });
 });
 
-module.exports = localStrategy, jwtStrategy;
+module.exports = { localStrategy, jwtStrategy };
 

@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "name": "New card",
+      "baseline": {
+        "interval": 1,
+        "time": 0.076721
+      },
+      "ml": {
+        "interval": null,
+        "time": 6.810835
+      },
+      "difference": null,
+      "percentDifference": null
+    },
+    {
+      "name": "Second review (first correct)",
+      "baseline": {
+        "interval": 6,
+        "time": 0.008344
+      },
+      "ml": {
+        "interval": null,
+        "time": 1.457752
+      },
+      "difference": null,
+      "percentDifference": null
+    },
+    {
+      "name": "Third review (building mastery)",
+      "baseline": {
+        "interval": 16,
+        "time": 0.008433
+      },
+      "ml": {
+        "interval": null,
+        "time": 1.099645
+      },
+      "difference": null,
+      "percentDifference": null
+    },
+    {
+      "name": "Struggling card",
+      "baseline": {
+        "interval": 1,
+        "time": 0.004602
+      },
+      "ml": {
+        "interval": null,
+        "time": 0.900907
+      },
+      "difference": null,
+      "percentDifference": null
+    },
+    {
+      "name": "Well-learned card",
+      "baseline": {
+        "interval": 39,
+        "time": 0.005581
+      },
+      "ml": {
+        "interval": null,
+        "time": 1.011282
+      },
+      "difference": null,
+      "percentDifference": null
+    }
+  ],
+  "avgBaselineTime": 0.0207362,
+  "avgMLTime": 2.2560842
+}

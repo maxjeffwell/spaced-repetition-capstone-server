@@ -1,0 +1,83 @@
+{
+  "results": [
+    {
+      "testCase": "New card (first review)",
+      "serverPrediction": 9979953,
+      "clientPrediction": 9979953,
+      "serverTime": 7.633471,
+      "clientTime": 1.180155,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Second review (correct on first)",
+      "serverPrediction": 9978896,
+      "clientPrediction": 9978896,
+      "serverTime": 0.976126,
+      "clientTime": 1.104926,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Easy card (high mastery)",
+      "serverPrediction": 9977487,
+      "clientPrediction": 9977487,
+      "serverTime": 1.215487,
+      "clientTime": 1.068222,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Difficult card (struggling)",
+      "serverPrediction": 9979776,
+      "clientPrediction": 9979776,
+      "serverTime": 1.039908,
+      "clientTime": 0.71173,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Moderately learned",
+      "serverPrediction": 9978896,
+      "clientPrediction": 9978896,
+      "serverTime": 0.772409,
+      "clientTime": 0.817921,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Mastered card (long interval)",
+      "serverPrediction": 9973786,
+      "clientPrediction": 9973786,
+      "serverTime": 0.714778,
+      "clientTime": 0.759529,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Morning review (circadian)",
+      "serverPrediction": 17463862,
+      "clientPrediction": 17463862,
+      "serverTime": 0.851337,
+      "clientTime": 0.496143,
+      "match": true,
+      "diff": 0
+    },
+    {
+      "testCase": "Evening review (circadian)",
+      "serverPrediction": 2493931,
+      "clientPrediction": 2493931,
+      "serverTime": 0.537944,
+      "clientTime": 0.48997,
+      "match": true,
+      "diff": 0
+    }
+  ],
+  "summary": {
+    "allMatch": true,
+    "avgServerTime": 1.7176825,
+    "avgClientTime": 0.8285745,
+    "avgSpeedup": 2.073057401597563,
+    "maxDiff": 0
+  }
+}

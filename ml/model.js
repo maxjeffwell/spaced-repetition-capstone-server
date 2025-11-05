@@ -231,9 +231,11 @@ class IntervalPredictionModel {
       fs.mkdirSync(savePath, { recursive: true });
     }
 
-    // Save model weights and architecture as JSON
-    const modelJSON = await this.model.toJSON();
-    const weights = await this.model.getWeights();
+    // Get model configuration
+    const modelConfig = this.model.toJSON(null, false);
+
+    // Get weights
+    const weights = this.model.getWeights();
     const weightsData = await Promise.all(
       weights.map(async w => ({
         shape: w.shape,
@@ -241,9 +243,13 @@ class IntervalPredictionModel {
       }))
     );
 
+    // Save complete model data
     const modelData = {
-      modelTopology: modelJSON.modelTopology,
-      weightsManifest: weightsData
+      modelTopology: modelConfig,
+      weightsManifest: weightsData,
+      format: 'layers-model',
+      generatedBy: 'spaced-repetition-ml',
+      convertedBy: '1.0.0'
     };
 
     fs.writeFileSync(

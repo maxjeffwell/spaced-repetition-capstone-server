@@ -3,7 +3,6 @@ services:
   - type: web
     name: spaced-repetition-api
     runtime: node
-    rootDir: spaced-repetition-capstone-server
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api

@@ -26,7 +26,6 @@ services:
   - type: web
     name: spaced-repetition-client
     runtime: static
-    region: oregon
     plan: free
     buildCommand: cd spaced-repetition-capstone-client && npm install && npm run build
     staticPublishPath: spaced-repetition-capstone-client/build

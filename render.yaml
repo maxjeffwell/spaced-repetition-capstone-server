@@ -3,7 +3,6 @@ services:
   - type: web
     name: spaced-repetition-api
     runtime: node
-    region: oregon
     plan: free
     buildCommand: cd spaced-repetition-capstone-server && npm install
     startCommand: cd spaced-repetition-capstone-server && npm run heroku

@@ -211,4 +211,10 @@ async function main() {
   console.log('='.repeat(80));
 }
 
-main();
+// Only run when executed directly, not when required
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Error:', err.message);
+    process.exit(1);
+  });
+}

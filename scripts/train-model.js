@@ -104,7 +104,7 @@ async function trainModel(trainingDataPath, options = {}) {
     if (i >= testData.length) return;
 
     const sample = testData[i];
-    const predicted = model.predict(sample.features);
+    const predicted = model.predict(sample.features, sample.metadata.reviewHistory);
     const actual = sample.label.optimalInterval;
     const error = Math.abs(predicted - actual);
 
@@ -116,9 +116,26 @@ async function trainModel(trainingDataPath, options = {}) {
     console.log(`   Error: ${error.toFixed(1)} days`);
   });
 
+  // Feature importance analysis
+  console.log('\n🔍 Analyzing Feature Importance...');
+  const importance = await model.getFeatureImportance(testData, Math.min(20, testData.length));
+
+  console.log('\n📊 Top 10 Most Important Features:');
+  importance.topFeatures.slice(0, 10).forEach(([name, score], idx) => {
+    const barLength = Math.round(score * 50);
+    const bar = '█'.repeat(barLength) + '░'.repeat(50 - barLength);
+    console.log(`   ${(idx + 1).toString().padStart(2)}. ${name.padEnd(30)} ${bar} ${(score * 100).toFixed(2)}%`);
+  });
+
   console.log('\n' + '='.repeat(60));
   console.log('✓ Training Complete!');
   console.log('='.repeat(60));
+  console.log('\n📈 Model Statistics:');
+  console.log(`   Input features: 51 (8 base + 43 engineered)`);
+  console.log(`   Parameters: ~${model.model.countParams().toLocaleString()}`);
+  console.log(`   Training time: ${trainingTime}s`);
+  console.log(`   Test MAE: ${testMetrics.mae.toFixed(4)} days`);
+  console.log(`   Improvement: ${improvement.toFixed(1)}%`);
 
   return {
     model,

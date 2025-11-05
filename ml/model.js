@@ -1,22 +1,29 @@
 'use strict';
 
 /**
- * Neural Network Model for Spaced Repetition Interval Prediction
+ * Advanced Neural Network Model for Spaced Repetition Interval Prediction
  *
- * Uses TensorFlow.js to predict optimal review intervals based on:
- * - Memory strength (current interval)
- * - Difficulty rating (historical failure rate)
- * - Time since last review
- * - Success rate
- * - Average response time
- * - Total reviews
- * - Consecutive correct
- * - Time of day
+ * Uses TensorFlow.js with sophisticated feature engineering including:
+ * - 8 base features (memory strength, difficulty, etc.)
+ * - Forgetting curve modeling (Ebbinghaus exponential decay)
+ * - Interaction features (non-linear relationships)
+ * - Polynomial features (higher-order terms)
+ * - Cyclical time encoding (sinusoidal)
+ * - Moving averages and trends
+ * - Momentum features (learning acceleration)
+ * - Retention prediction features
+ *
+ * Total: 51 engineered features
  */
 
 // Use regular TensorFlow.js with CPU backend (compatible with Node.js 24)
 const tf = require('@tensorflow/tfjs');
 const path = require('path');
+const {
+  createAdvancedFeatureVector,
+  getFeatureArray,
+  getFeatureNames
+} = require('./advanced-features');
 
 // Set CPU backend to avoid Node binding issues
 tf.setBackend('cpu');
@@ -34,31 +41,44 @@ class IntervalPredictionModel {
   }
 
   /**
-   * Create the neural network architecture
+   * Create the neural network architecture (Enhanced for 51 features)
    */
   createModel() {
     const model = tf.sequential();
 
-    // Input layer: 8 features
+    // Input layer: 51 advanced features
+    // Larger first layer to handle increased dimensionality
     model.add(tf.layers.dense({
-      inputShape: [8],
+      inputShape: [51],
+      units: 128,
+      activation: 'relu',
+      kernelInitializer: 'heNormal'
+    }));
+
+    // Batch normalization for better training stability
+    model.add(tf.layers.batchNormalization());
+    model.add(tf.layers.dropout({ rate: 0.3 }));
+
+    // Hidden layer 1: Learn complex patterns
+    model.add(tf.layers.dense({
+      units: 64,
+      activation: 'relu',
+      kernelInitializer: 'heNormal'
+    }));
+    model.add(tf.layers.batchNormalization());
+    model.add(tf.layers.dropout({ rate: 0.25 }));
+
+    // Hidden layer 2: Refine patterns
+    model.add(tf.layers.dense({
       units: 32,
       activation: 'relu',
       kernelInitializer: 'heNormal'
     }));
-
-    // Hidden layer 1: Learn complex patterns
     model.add(tf.layers.dropout({ rate: 0.2 }));
+
+    // Hidden layer 3: Final refinement
     model.add(tf.layers.dense({
       units: 16,
-      activation: 'relu',
-      kernelInitializer: 'heNormal'
-    }));
-
-    // Hidden layer 2: Refine predictions
-    model.add(tf.layers.dropout({ rate: 0.1 }));
-    model.add(tf.layers.dense({
-      units: 8,
       activation: 'relu',
       kernelInitializer: 'heNormal'
     }));
@@ -105,24 +125,38 @@ class IntervalPredictionModel {
   }
 
   /**
-   * Prepare training data from extracted samples
+   * Prepare training data from extracted samples (with advanced features)
    */
   prepareTrainingData(trainingData) {
     const features = [];
     const labels = [];
 
     trainingData.forEach(sample => {
-      // Feature vector (8 dimensions)
-      features.push([
-        sample.features.memoryStrength,
-        sample.features.difficultyRating,
-        sample.features.timeSinceLastReview,
-        sample.features.successRate,
-        sample.features.averageResponseTime / 1000, // Convert ms to seconds
-        sample.features.totalReviews,
-        sample.features.consecutiveCorrect,
-        sample.features.timeOfDay
-      ]);
+      // Create advanced feature vector (51 dimensions)
+      const baseFeatures = {
+        memoryStrength: sample.features.memoryStrength,
+        difficultyRating: sample.features.difficultyRating,
+        timeSinceLastReview: sample.features.timeSinceLastReview,
+        successRate: sample.features.successRate,
+        averageResponseTime: sample.features.averageResponseTime,
+        totalReviews: sample.features.totalReviews,
+        consecutiveCorrect: sample.features.consecutiveCorrect,
+        timeOfDay: sample.features.timeOfDay
+      };
+
+      // Get review history if available
+      const reviewHistory = sample.metadata && sample.metadata.reviewHistory
+        ? sample.metadata.reviewHistory
+        : null;
+      const reviewIndex = sample.metadata && sample.metadata.reviewIndex
+        ? sample.metadata.reviewIndex
+        : null;
+
+      // Generate advanced features
+      const advancedFeatures = createAdvancedFeatureVector(baseFeatures, reviewHistory, reviewIndex);
+      const featureArray = getFeatureArray(advancedFeatures);
+
+      features.push(featureArray);
 
       // Label: optimal interval in days
       labels.push(sample.label.optimalInterval);
@@ -180,26 +214,30 @@ class IntervalPredictionModel {
   }
 
   /**
-   * Predict optimal interval for a single question
+   * Predict optimal interval for a single question (with advanced features)
    */
-  predict(questionFeatures) {
+  predict(questionFeatures, reviewHistory = null) {
     if (!this.model || !this.isLoaded) {
       throw new Error('Model not loaded. Train or load model first.');
     }
 
-    // Convert features to tensor
-    const featureVector = [
-      questionFeatures.memoryStrength,
-      questionFeatures.difficultyRating,
-      questionFeatures.timeSinceLastReview,
-      questionFeatures.successRate,
-      questionFeatures.averageResponseTime / 1000,
-      questionFeatures.totalReviews,
-      questionFeatures.consecutiveCorrect,
-      questionFeatures.timeOfDay
-    ];
+    // Create base features object
+    const baseFeatures = {
+      memoryStrength: questionFeatures.memoryStrength,
+      difficultyRating: questionFeatures.difficultyRating,
+      timeSinceLastReview: questionFeatures.timeSinceLastReview,
+      successRate: questionFeatures.successRate,
+      averageResponseTime: questionFeatures.averageResponseTime,
+      totalReviews: questionFeatures.totalReviews,
+      consecutiveCorrect: questionFeatures.consecutiveCorrect,
+      timeOfDay: questionFeatures.timeOfDay
+    };
 
-    const featureTensor = tf.tensor2d([featureVector]);
+    // Generate advanced features
+    const advancedFeatures = createAdvancedFeatureVector(baseFeatures, reviewHistory);
+    const featureArray = getFeatureArray(advancedFeatures);
+
+    const featureTensor = tf.tensor2d([featureArray]);
     const normalizedFeatures = this.normalizeFeatures(featureTensor, false);
 
     // Predict
@@ -338,6 +376,116 @@ class IntervalPredictionModel {
     if (this.model) {
       this.model.summary();
     }
+  }
+
+  /**
+   * Get feature importance using gradient-based attribution
+   * This helps understand which features the model relies on most
+   */
+  async getFeatureImportance(testData, numSamples = 20) {
+    if (!this.model || !this.isLoaded) {
+      throw new Error('Model not loaded');
+    }
+
+    const { features } = this.prepareTrainingData(testData.slice(0, numSamples));
+    const normalizedFeatures = this.normalizeFeatures(features, false);
+
+    const featureNames = getFeatureNames();
+    const importanceScores = new Array(featureNames.length).fill(0);
+
+    // Calculate gradients for each sample
+    for (let i = 0; i < normalizedFeatures.shape[0]; i++) {
+      const sample = normalizedFeatures.slice([i, 0], [1, -1]);
+
+      // Calculate gradient of output with respect to input
+      const gradients = tf.tidy(() => {
+        const grad = tf.variableGrads(() => {
+          const pred = this.model.predict(sample);
+          return pred.asScalar();
+        }, [sample]);
+
+        return grad.grads[0];
+      });
+
+      // Accumulate absolute gradients as importance scores
+      const gradData = await gradients.data();
+      for (let j = 0; j < gradData.length; j++) {
+        importanceScores[j] += Math.abs(gradData[j]);
+      }
+
+      sample.dispose();
+      gradients.dispose();
+    }
+
+    // Normalize scores
+    const totalImportance = importanceScores.reduce((a, b) => a + b, 0);
+    const normalizedImportance = importanceScores.map(score => score / totalImportance);
+
+    // Create feature importance object
+    const importance = {};
+    featureNames.forEach((name, idx) => {
+      importance[name] = normalizedImportance[idx];
+    });
+
+    // Sort by importance
+    const sorted = Object.entries(importance)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20); // Top 20 features
+
+    features.dispose();
+    normalizedFeatures.dispose();
+
+    return {
+      allFeatures: importance,
+      topFeatures: sorted
+    };
+  }
+
+  /**
+   * Get detailed prediction with feature breakdown
+   * Useful for debugging and understanding model behavior
+   */
+  predictWithDetails(questionFeatures, reviewHistory = null) {
+    if (!this.model || !this.isLoaded) {
+      throw new Error('Model not loaded. Train or load model first.');
+    }
+
+    // Create base features object
+    const baseFeatures = {
+      memoryStrength: questionFeatures.memoryStrength,
+      difficultyRating: questionFeatures.difficultyRating,
+      timeSinceLastReview: questionFeatures.timeSinceLastReview,
+      successRate: questionFeatures.successRate,
+      averageResponseTime: questionFeatures.averageResponseTime,
+      totalReviews: questionFeatures.totalReviews,
+      consecutiveCorrect: questionFeatures.consecutiveCorrect,
+      timeOfDay: questionFeatures.timeOfDay
+    };
+
+    // Generate advanced features
+    const advancedFeatures = createAdvancedFeatureVector(baseFeatures, reviewHistory);
+    const featureArray = getFeatureArray(advancedFeatures);
+
+    const featureTensor = tf.tensor2d([featureArray]);
+    const normalizedFeatures = this.normalizeFeatures(featureTensor, false);
+
+    // Predict
+    const prediction = this.model.predict(normalizedFeatures);
+    const interval = prediction.dataSync()[0];
+
+    // Cleanup
+    featureTensor.dispose();
+    normalizedFeatures.dispose();
+    prediction.dispose();
+
+    return {
+      predictedInterval: Math.max(1, Math.round(interval)),
+      rawPrediction: interval,
+      baseFeatures: baseFeatures,
+      advancedFeatures: advancedFeatures,
+      featureArray: featureArray,
+      featureNames: getFeatureNames()
+    };
   }
 }
 

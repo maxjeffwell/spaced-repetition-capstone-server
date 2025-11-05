@@ -76,7 +76,8 @@ async function extractTrainingData() {
             userId: user.id,
             question: question.question,
             reviewIndex: i,
-            timestamp: currentReview.timestamp
+            timestamp: currentReview.timestamp,
+            reviewHistory: question.reviewHistory // Include for advanced feature engineering
           }
         });
 

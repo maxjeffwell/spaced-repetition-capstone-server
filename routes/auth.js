@@ -23,7 +23,12 @@ router.post('/auth/refresh', jwtAuth, (req, res) => {
 });
 
 function createAuthToken(user) {
-  return jwt.sign({ user }, JWT_SECRET, {
+  return jwt.sign({
+    user: {
+      id: user._id || user.id,
+      username: user.username
+    }
+  }, JWT_SECRET, {
     subject: user.username,
     expiresIn: JWT_EXPIRY
   });

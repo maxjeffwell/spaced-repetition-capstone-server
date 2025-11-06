@@ -16,13 +16,17 @@
  *   --reviews=N        Reviews per session (default: 5)
  *   --days=N           Days to spread simulation over (default: 30)
  *   --mode=MODE        'fast' (seconds) or 'realistic' (days) (default: realistic)
+ *   --algorithm=ALGO   'baseline' or 'ml' (default: baseline)
  *
  * Examples:
  *   # Quick test (seconds between reviews)
  *   node scripts/simulate-realistic-reviews.js --mode=fast --users=1 --sessions=5
  *
- *   # Realistic training data (days between reviews)
+ *   # Realistic training data with baseline (days between reviews)
  *   node scripts/simulate-realistic-reviews.js --users=5 --sessions=15 --days=60
+ *
+ *   # Generate ML predictions (requires trained model)
+ *   node scripts/simulate-realistic-reviews.js --users=3 --sessions=10 --algorithm=ml
  */
 
 const mongoose = require('mongoose');
@@ -144,7 +148,9 @@ function calculateSM2Interval(easeFactor, repetitions, quality) {
 /**
  * Simulate a single review with realistic parameters
  */
-async function simulateReview(user, question, profile, timestamp, sessionNumber) {
+async function simulateReview(user, question, profile, timestamp, sessionNumber, options = {}) {
+  const useML = options.useML || false;
+  const mlModel = options.mlModel || null;
   const reviewHistory = question.reviewHistory || [];
   const lastReview = reviewHistory.length > 0 ? reviewHistory[reviewHistory.length - 1] : null;
 
@@ -187,7 +193,39 @@ async function simulateReview(user, question, profile, timestamp, sessionNumber)
   }
 
   const newRepetitions = recalled ? (question.repetitions || 0) + 1 : 0;
-  const intervalUsed = calculateSM2Interval(newEaseFactor, newRepetitions, quality);
+  const baselineInterval = calculateSM2Interval(newEaseFactor, newRepetitions, quality);
+
+  // Use ML prediction if enabled
+  let mlInterval = null;
+  let intervalUsed = baselineInterval;
+  let algorithmUsed = 'baseline';
+
+  if (useML && mlModel) {
+    try {
+      // Calculate stats for ML prediction
+      const totalReviews = reviewHistory.length;
+      const correctCount = reviewHistory.filter(r => r.recalled).length;
+      const successRate = totalReviews > 0 ? correctCount / totalReviews : 0;
+
+      mlInterval = mlModel.predict({
+        memoryStrength: question.memoryStrength || 1,
+        difficultyRating: difficultyRating,
+        timeSinceLastReview: daysSinceReview,
+        successRate: successRate,
+        averageResponseTime: question.averageResponseTime || 2000,
+        totalReviews: totalReviews,
+        consecutiveCorrect: question.consecutiveCorrect || 0,
+        timeOfDay: timestamp.getHours() / 24
+      }, reviewHistory);
+
+      intervalUsed = mlInterval;
+      algorithmUsed = 'ml';
+    } catch (error) {
+      console.warn('ML prediction failed, falling back to baseline:', error.message);
+      intervalUsed = baselineInterval;
+      algorithmUsed = 'baseline';
+    }
+  }
 
   // Create review record
   const review = {
@@ -195,9 +233,9 @@ async function simulateReview(user, question, profile, timestamp, sessionNumber)
     recalled,
     responseTime,
     intervalUsed,
-    algorithmUsed: 'baseline',
-    baselineInterval: intervalUsed,
-    mlInterval: null,
+    algorithmUsed,
+    baselineInterval,
+    mlInterval,
     difficulty: Math.round(difficultyRating * 5)  // 0-5 scale
   };
 
@@ -319,7 +357,7 @@ async function createSimulatedUser(profileKey, userIndex) {
 /**
  * Simulate study sessions for a user
  */
-async function simulateUserSessions(user, profile, numSessions, reviewsPerSession, mode, startDate) {
+async function simulateUserSessions(user, profile, numSessions, reviewsPerSession, mode, startDate, options = {}) {
   console.log(`\n📚 Simulating ${numSessions} sessions for ${user.username}...`);
 
   let totalReviews = 0;
@@ -337,7 +375,7 @@ async function simulateUserSessions(user, profile, numSessions, reviewsPerSessio
       const reviewTimestamp = getReviewTimestamp(startDate, mode, sessionIdx, reviewIdx);
 
       // Simulate the review
-      const result = await simulateReview(user, question, profile, reviewTimestamp, sessionIdx);
+      const result = await simulateReview(user, question, profile, reviewTimestamp, sessionIdx, options);
 
       if (result.recalled) totalCorrect++;
       totalReviews++;
@@ -370,7 +408,8 @@ async function main() {
     sessions: 10,
     reviews: 5,
     days: 30,
-    mode: 'realistic'
+    mode: 'realistic',
+    algorithm: 'baseline'  // 'baseline' or 'ml'
   };
 
   args.forEach(arg => {
@@ -389,7 +428,8 @@ async function main() {
   console.log(`  Sessions per user: ${options.sessions}`);
   console.log(`  Reviews per session: ${options.reviews}`);
   console.log(`  Time mode: ${options.mode}`);
-  console.log(`  Time span: ${options.days} days\n`);
+  console.log(`  Time span: ${options.days} days`);
+  console.log(`  Algorithm: ${options.algorithm}\n`);
 
   try {
     // Connect to MongoDB
@@ -399,6 +439,16 @@ async function main() {
       useUnifiedTopology: true
     });
     console.log('✓ Connected to MongoDB\n');
+
+    // Load ML model if using ML algorithm
+    let mlModel = null;
+    if (options.algorithm === 'ml') {
+      console.log('Loading ML model...');
+      const IntervalPredictionModel = require('../ml/model');
+      mlModel = new IntervalPredictionModel();
+      await mlModel.load('ml/saved-model');
+      console.log('✓ ML model loaded\n');
+    }
 
     // Create users with different profiles
     const profileKeys = Object.keys(LEARNING_PROFILES);
@@ -426,7 +476,11 @@ async function main() {
         options.sessions,
         options.reviews,
         options.mode,
-        startDate
+        startDate,
+        {
+          useML: options.algorithm === 'ml',
+          mlModel: mlModel
+        }
       );
 
       results.push({ username: user.username, ...result });

@@ -16,17 +16,14 @@
  * Total: 51 engineered features
  */
 
-// Use regular TensorFlow.js with CPU backend (compatible with Node.js 24)
-const tf = require('@tensorflow/tfjs');
+// Use TensorFlow.js Node backend for proper file loading
+const tf = require('@tensorflow/tfjs-node');
 const path = require('path');
 const {
   createAdvancedFeatureVector,
   getFeatureArray,
   getFeatureNames
 } = require('./advanced-features');
-
-// Set CPU backend to avoid Node binding issues
-tf.setBackend('cpu');
 
 class IntervalPredictionModel {
   constructor() {

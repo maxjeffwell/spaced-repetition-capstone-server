@@ -28,7 +28,7 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
   const question = user.questions[questionIndex];
 
   // Determine which algorithm to use
-  const algorithmMode = user.settings?.algorithmMode || 'baseline';
+  const algorithmMode = user.settings?.algorithmMode || 'ml';
   let algorithmUsed = algorithmMode;
 
   // For A/B testing, randomly assign algorithm per card

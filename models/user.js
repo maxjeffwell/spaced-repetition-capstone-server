@@ -149,11 +149,11 @@ const userSchema = new Schema({
     algorithmMode: {
       type: String,
       enum: ['baseline', 'ml', 'ab-test'],
-      default: 'baseline'
+      default: 'ml'
     },
     useMLAlgorithm: {
       type: Boolean,
-      default: false
+      default: true
     },
     dailyGoal: {
       type: Number,

@@ -315,12 +315,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Load .env file from parent directory
+    from dotenv import load_dotenv
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    load_dotenv(env_path)
+
     # Get MongoDB URI from environment
     mongodb_uri = os.getenv('MONGODB_URI')
 
     if not mongodb_uri:
         print("❌ MONGODB_URI environment variable not set")
-        print("   Set it with: export MONGODB_URI='mongodb+srv://...'")
+        print("   Checked .env file at:", env_path)
         sys.exit(1)
 
     simulate_ml_predictions(mongodb_uri, args.users, args.reviews)

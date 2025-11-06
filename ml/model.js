@@ -310,26 +310,15 @@ class IntervalPredictionModel {
   }
 
   /**
-   * Load model from disk (JSON format)
+   * Load model from disk (TensorFlow.js format)
    */
   async load(modelPath = 'ml/saved-model') {
     const fs = require('fs');
     const loadPath = path.resolve(modelPath);
 
-    // Recreate model architecture
-    this.createModel();
-
-    // Load weights
-    const modelData = JSON.parse(
-      fs.readFileSync(path.join(loadPath, 'model.json'), 'utf8')
-    );
-
-    const weightsData = modelData.weightsManifest;
-    const weightTensors = weightsData.map(w =>
-      tf.tensor(w.data, w.shape)
-    );
-
-    this.model.setWeights(weightTensors);
+    // Use TensorFlow.js built-in loader for proper format support
+    const modelFile = `file://${path.join(loadPath, 'model.json')}`;
+    this.model = await tf.loadLayersModel(modelFile);
 
     // Load normalization stats
     const stats = JSON.parse(

@@ -242,9 +242,13 @@ class IntervalPredictionModel {
     const interval = prediction.dataSync()[0];
 
     // Temporary debug logging
+    const normalizedData = await normalizedFeatures.data();
     console.log('    [ML Debug] Raw prediction:', interval);
     console.log('    [ML Debug] Rounded:', Math.max(1, Math.round(interval)));
-    console.log('    [ML Debug] First 5 features:', featureArray.slice(0, 5));
+    console.log('    [ML Debug] First 5 features (raw):', featureArray.slice(0, 5));
+    console.log('    [ML Debug] First 5 features (normalized):', Array.from(normalizedData).slice(0, 5));
+    console.log('    [ML Debug] Mean (first 5):', Array.from(await this.featureStats.mean.data()).slice(0, 5));
+    console.log('    [ML Debug] Std (first 5):', Array.from(await this.featureStats.std.data()).slice(0, 5));
 
     // Cleanup
     featureTensor.dispose();

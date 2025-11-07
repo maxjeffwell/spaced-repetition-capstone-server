@@ -53,9 +53,6 @@ class MLService {
       this.isLoading = false;
 
       console.log('✓ ML model loaded and ready for predictions');
-      console.log('  Model path:', fullPath);
-      console.log('  Model instance:', this.model ? 'exists' : 'null');
-      console.log('  Model loaded:', this.model.isLoaded);
 
     } catch (error) {
       console.error('❌ Failed to load ML model:', error.message);

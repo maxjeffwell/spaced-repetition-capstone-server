@@ -37,9 +37,16 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
     algorithmUsed = question._id.toString().charCodeAt(0) % 2 === 0 ? 'baseline' : 'ml';
   }
 
+  console.log('[Algorithm Manager]');
+  console.log('  Algorithm mode:', algorithmMode);
+  console.log('  Algorithm used:', algorithmUsed);
+  console.log('  ML model available:', mlModel ? 'yes' : 'no');
+
   // Always calculate baseline prediction
   const baselineResult = applySM2Algorithm(question, isCorrect, responseTime);
   const baselineInterval = baselineResult.interval;
+
+  console.log('  Baseline interval:', baselineInterval);
 
   // Calculate ML prediction if available and needed
   let mlInterval = null;
@@ -47,13 +54,18 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
 
   if (mlModel && (algorithmUsed === 'ml' || algorithmMode === 'ab-test')) {
     try {
+      console.log('  Calling ML prediction...');
       mlPrediction = await predictMLInterval(question, mlModel);
       mlInterval = mlPrediction.interval;
+      console.log('  ML interval:', mlInterval);
     } catch (error) {
       console.error('ML prediction failed, falling back to baseline:', error.message);
+      console.error(error.stack);
       algorithmUsed = 'baseline';
       mlInterval = baselineInterval;
     }
+  } else {
+    console.log('  Skipping ML prediction (model not available or not needed)');
   }
 
   // Determine which interval to use

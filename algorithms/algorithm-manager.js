@@ -126,8 +126,8 @@ async function predictMLInterval(question, mlModel) {
   // Create feature vector from question
   const features = createFeatureVector(question);
 
-  // Predict optimal interval
-  const interval = mlModel.predict(features);
+  // Predict optimal interval (pass reviewHistory for advanced feature generation)
+  const interval = mlModel.predict(features, question.reviewHistory);
 
   return {
     interval,

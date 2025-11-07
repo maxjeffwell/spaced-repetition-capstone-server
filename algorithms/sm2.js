@@ -62,6 +62,12 @@ function calculateSM2Interval(question, isCorrect, userQuality = null) {
       interval = Math.round(interval * easeFactor);
     }
 
+    // Cap maximum interval at 365 days (1 year)
+    // Prevents exponential growth from creating absurd intervals
+    if (interval > 365) {
+      interval = 365;
+    }
+
     repetitions++;
   }
 

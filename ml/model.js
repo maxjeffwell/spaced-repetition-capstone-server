@@ -241,6 +241,11 @@ class IntervalPredictionModel {
     const prediction = this.model.predict(normalizedFeatures);
     const interval = prediction.dataSync()[0];
 
+    // Temporary debug logging
+    console.log('    [ML Debug] Raw prediction:', interval);
+    console.log('    [ML Debug] Rounded:', Math.max(1, Math.round(interval)));
+    console.log('    [ML Debug] First 5 features:', featureArray.slice(0, 5));
+
     // Cleanup
     featureTensor.dispose();
     normalizedFeatures.dispose();

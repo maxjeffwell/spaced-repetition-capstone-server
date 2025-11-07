@@ -234,12 +234,22 @@ class IntervalPredictionModel {
     const advancedFeatures = createAdvancedFeatureVector(baseFeatures, reviewHistory);
     const featureArray = getFeatureArray(advancedFeatures);
 
+    // Debug logging
+    console.log('[ML Prediction Debug]');
+    console.log('  Base features:', baseFeatures);
+    console.log('  Review history length:', reviewHistory ? reviewHistory.length : 0);
+    console.log('  Feature array length:', featureArray.length);
+    console.log('  Sample features:', featureArray.slice(0, 10));
+
     const featureTensor = tf.tensor2d([featureArray]);
     const normalizedFeatures = this.normalizeFeatures(featureTensor, false);
 
     // Predict
     const prediction = this.model.predict(normalizedFeatures);
     const interval = prediction.dataSync()[0];
+
+    console.log('  Raw prediction:', interval);
+    console.log('  Rounded interval:', Math.max(1, Math.round(interval)));
 
     // Cleanup
     featureTensor.dispose();

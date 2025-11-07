@@ -84,9 +84,16 @@ if (require.main === module) {
   runServer();
 
   // Initialize ML model asynchronously (non-blocking)
-  mlService.initialize().catch(err => {
-    console.error('Failed to initialize ML service:', err.message);
-  });
+  console.log('🤖 Starting ML service initialization...');
+  mlService.initialize()
+    .then(() => {
+      console.log('🤖 ML service initialization completed');
+      console.log('   Status:', mlService.getStatus());
+    })
+    .catch(err => {
+      console.error('🤖 Failed to initialize ML service:', err.message);
+      console.error('   Stack:', err.stack);
+    });
 }
 
 module.exports = { app };

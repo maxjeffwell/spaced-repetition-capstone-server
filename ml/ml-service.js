@@ -21,8 +21,6 @@ class MLService {
    * Initialize and load the ML model
    */
   async initialize(modelPath = 'ml/saved-model') {
-    console.log('[ML Service] initialize() called');
-
     if (this.isReady) {
       console.log('✓ ML model already loaded');
       return;
@@ -42,19 +40,14 @@ class MLService {
       const fullPath = path.resolve(modelPath);
       const fs = require('fs');
 
-      console.log('  Model path:', fullPath);
-      console.log('  Checking for model.json...');
-
       // Check if model exists
       if (!fs.existsSync(path.join(fullPath, 'model.json'))) {
         console.log('⚠️  ML model not found. Using baseline algorithm only.');
-        console.log('   Expected path:', path.join(fullPath, 'model.json'));
         console.log('   Train a model with: node scripts/train-model.js');
         this.isLoading = false;
         return;
       }
 
-      console.log('  Model file found, loading...');
       await this.model.load(modelPath);
       this.isReady = true;
       this.isLoading = false;
@@ -63,7 +56,6 @@ class MLService {
 
     } catch (error) {
       console.error('❌ Failed to load ML model:', error.message);
-      console.error('   Error stack:', error.stack);
       console.log('   Falling back to baseline algorithm');
       this.model = null;
       this.isReady = false;

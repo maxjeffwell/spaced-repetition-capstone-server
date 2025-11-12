@@ -226,7 +226,7 @@ function getAlgorithmComparison(user) {
     question.reviewHistory.forEach(review => {
       if (review.algorithmUsed === 'baseline') {
         baselineReviews.push(review);
-      } else if (review.algorithmUsed === 'ml') {
+      } else if (review.algorithmUsed === 'ml' || review.algorithmUsed === 'webgpu') {
         mlReviews.push(review);
       }
     });

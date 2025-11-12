@@ -1,15 +1,15 @@
 {
   "modelVersion": "4.0.0-advanced",
-  "trainedDate": "2025-11-12T10:27:59.082371",
+  "trainedDate": "2025-11-12T11:03:51.123121",
   "numFeatures": 51,
   "architecture": "51\u2192128\u219264\u219232\u219216\u21921",
-  "trainingSize": 908,
-  "testSize": 227,
+  "trainingSize": 1193,
+  "testSize": 299,
   "performance": {
-    "testMAE": 1.2079143524169922,
-    "testLoss": 5.058716297149658,
-    "baselineMAE": 13.146286964416504,
-    "improvement": 90.8117446899414
+    "testMAE": 1.385389804840088,
+    "testLoss": 5.692814826965332,
+    "baselineMAE": 15.983926773071289,
+    "improvement": 91.33261108398438
   },
   "training": {
     "epochs": 100,

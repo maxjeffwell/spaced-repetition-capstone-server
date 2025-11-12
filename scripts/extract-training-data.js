@@ -45,16 +45,24 @@ async function extractTrainingData() {
         const reviewsUpToNow = question.reviewHistory.slice(0, i + 1);
         const correctUpToNow = reviewsUpToNow.filter(r => r.recalled).length;
         const successRate = correctUpToNow / reviewsUpToNow.length;
+        const reviewCount = reviewsUpToNow.length;
+
+        // Calculate memoryStrength based on performance, not just interval
+        // This combines: interval, success rate, and review count
+        const intervalUsed = currentReview.intervalUsed || 1;
+        const performanceMultiplier = 1 + (successRate * 0.5); // Up to 1.5x for perfect performance
+        const experienceBonus = Math.min(2, 1 + Math.log(reviewCount + 1) * 0.1); // Gradual increase
+        const memoryStrength = Math.max(1, Math.min(90, intervalUsed * performanceMultiplier * experienceBonus));
 
         // Feature vector at time of current review
         const features = {
-          memoryStrength: currentReview.intervalUsed || 1,
+          memoryStrength,
           difficultyRating: 1 - successRate,
           timeSinceLastReview: i > 0 ?
             (currentReview.timestamp - reviewsUpToNow[i - 1].timestamp) / (1000 * 60 * 60 * 24) : 0,
           successRate: successRate,
           averageResponseTime: reviewsUpToNow.reduce((sum, r) => sum + r.responseTime, 0) / reviewsUpToNow.length,
-          totalReviews: reviewsUpToNow.length,
+          totalReviews: reviewCount,
           consecutiveCorrect: currentReview.recalled ?
             (reviewsUpToNow.slice(0, i).reverse().findIndex(r => !r.recalled) + 1) : 0,
           timeOfDay: new Date(currentReview.timestamp).getHours() / 24

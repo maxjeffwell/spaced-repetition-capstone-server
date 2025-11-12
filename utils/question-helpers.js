@@ -151,8 +151,19 @@ function updateLinkedList(user, questionIndex, interval) {
   // Update head to next question
   user.head = questions[questionIndex].next;
 
-  // Update memoryStrength to reflect interval
-  questions[questionIndex].memoryStrength = interval;
+  // Calculate memoryStrength based on performance, not just interval
+  // This combines: consecutive successes, success rate, and review count
+  // to better represent actual memory consolidation
+  const question = questions[questionIndex];
+  const stats = calculateQuestionStats(question);
+  const baseStrength = interval; // Start with the interval
+  const performanceMultiplier = 1 + (stats.successRate * 0.5); // Up to 1.5x for perfect performance
+  const experienceBonus = Math.min(2, 1 + Math.log(stats.totalReviews + 1) * 0.1); // Gradual increase
+
+  questions[questionIndex].memoryStrength = Math.max(
+    1,
+    Math.min(90, baseStrength * performanceMultiplier * experienceBonus)
+  );
 
   return user;
 }

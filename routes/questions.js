@@ -34,7 +34,7 @@ router.get('/next', jwtAuth, (req, res, next) => {
         });
       }
 
-      // Return question without answer
+      // Return question without answer, including features for client-side ML prediction
       res.json({
         question: nextQuestion.question,
         questionId: user.head,
@@ -43,7 +43,22 @@ router.get('/next', jwtAuth, (req, res, next) => {
           totalReviews: user.stats?.totalReviews || 0,
           correctAnswers: user.stats?.correctAnswers || 0,
           currentStreak: user.stats?.currentStreak || 0
-        }
+        },
+        // Question features for client-side prediction
+        questionFeatures: {
+          memoryStrength: nextQuestion.memoryStrength || 1,
+          difficultyRating: nextQuestion.difficultyRating || 0.5,
+          timeSinceLastReview: nextQuestion.lastReviewDate
+            ? (Date.now() - new Date(nextQuestion.lastReviewDate).getTime()) / (1000 * 60 * 60 * 24)
+            : 0,
+          successRate: nextQuestion.timesCorrect / Math.max(1, nextQuestion.timesCorrect + nextQuestion.timesIncorrect),
+          averageResponseTime: nextQuestion.averageResponseTime || 0,
+          totalReviews: nextQuestion.timesCorrect + nextQuestion.timesIncorrect,
+          consecutiveCorrect: nextQuestion.consecutiveCorrect || 0,
+          timeOfDay: new Date().getHours() / 24
+        },
+        // Include review history for advanced features
+        reviewHistory: nextQuestion.reviewHistory || []
       });
     })
     .catch(err => next(err));
@@ -52,7 +67,7 @@ router.get('/next', jwtAuth, (req, res, next) => {
 /* ========== POST ANSWER ========== */
 router.post('/answer', jwtAuth, (req, res, next) => {
   const userId = req.user.id;
-  const { answer, responseTime } = req.body;
+  const { answer, responseTime, predictedInterval, predictionTime } = req.body;
 
   /***** Validate input *****/
   if (!answer) {
@@ -65,6 +80,15 @@ router.post('/answer', jwtAuth, (req, res, next) => {
     const err = new Error('Invalid responseTime');
     err.status = 400;
     return next(err);
+  }
+
+  // Validate client-predicted interval if provided
+  if (predictedInterval !== null && predictedInterval !== undefined) {
+    if (typeof predictedInterval !== 'number' || predictedInterval < 1 || predictedInterval > 365) {
+      const err = new Error('Invalid predicted interval (must be 1-365 days)');
+      err.status = 400;
+      return next(err);
+    }
   }
 
   User.findById(userId)
@@ -89,11 +113,29 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       const correctAnswer = question.answer.trim().toLowerCase();
       const isCorrect = userAnswer === correctAnswer;
 
-      // Get ML model if available
-      const mlModel = mlService.getModel();
+      // Use client-predicted interval if provided, otherwise calculate server-side
+      let result;
+      if (predictedInterval !== null && predictedInterval !== undefined) {
+        console.log(`✅ Using client WebGPU prediction: ${predictedInterval} days (${predictionTime?.toFixed(2) || 'N/A'}ms)`);
 
-      // Process answer with algorithm manager (with optional ML model)
-      const result = await processAnswer(user, questionIndex, isCorrect, responseTime, mlModel);
+        // Process answer with client-predicted interval
+        result = await processAnswer(
+          user,
+          questionIndex,
+          isCorrect,
+          responseTime,
+          null, // No server ML model needed
+          predictedInterval // Use client prediction
+        );
+      } else {
+        console.log('⚠️  No client prediction, using server-side ML/baseline');
+
+        // Get ML model if available
+        const mlModel = mlService.getModel();
+
+        // Process answer with algorithm manager (with optional ML model)
+        result = await processAnswer(user, questionIndex, isCorrect, responseTime, mlModel);
+      }
 
       // Save updated user (user object was modified in-place by processAnswer)
       // Skip validation since data is already validated by processAnswer

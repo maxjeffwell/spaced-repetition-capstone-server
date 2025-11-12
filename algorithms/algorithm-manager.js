@@ -22,53 +22,68 @@ const {
  * @param {boolean} isCorrect - Was answer correct?
  * @param {number} responseTime - Time to answer in milliseconds
  * @param {Object} mlModel - Optional ML model for predictions
+ * @param {number} clientPredictedInterval - Optional pre-calculated interval from client
  * @returns {Object} Result with updated user and feedback
  */
-async function processAnswer(user, questionIndex, isCorrect, responseTime, mlModel = null) {
+async function processAnswer(user, questionIndex, isCorrect, responseTime, mlModel = null, clientPredictedInterval = null) {
   const question = user.questions[questionIndex];
 
-  // Determine which algorithm to use
-  const algorithmMode = user.settings?.algorithmMode || 'ml';
-  let algorithmUsed = algorithmMode;
-
-  // For A/B testing, randomly assign algorithm per card
-  if (algorithmMode === 'ab-test') {
-    // Use question ID to deterministically assign algorithm (consistent per card)
-    algorithmUsed = question._id.toString().charCodeAt(0) % 2 === 0 ? 'baseline' : 'ml';
-  }
-
-  // Always calculate baseline prediction
+  // Always calculate baseline prediction for comparison
   const baselineResult = applySM2Algorithm(question, isCorrect, responseTime);
   const baselineInterval = baselineResult.interval;
 
-  // Calculate ML prediction if available and needed
-  let mlInterval = null;
-  let mlPrediction = null;
-
-  if (mlModel && (algorithmUsed === 'ml' || algorithmMode === 'ab-test')) {
-    try {
-      mlPrediction = await predictMLInterval(question, mlModel);
-      mlInterval = mlPrediction.interval;
-    } catch (error) {
-      console.error('ML prediction failed, falling back to baseline:', error.message);
-      algorithmUsed = 'baseline';
-      mlInterval = baselineInterval;
-    }
-  }
-
   // Determine which interval to use
   let intervalUsed;
-  if (algorithmUsed === 'ml' && mlInterval !== null) {
-    intervalUsed = mlInterval;
-    // Update question with ML interval
-    question.memoryStrength = mlInterval;
-    question.mlRecommendedInterval = mlInterval;
-    if (mlPrediction?.confidence) {
-      question.predictedRetention = mlPrediction.confidence;
-    }
+  let mlInterval = null;
+  let algorithmUsed;
+
+  // If client provided a prediction, use it
+  if (clientPredictedInterval !== null && clientPredictedInterval !== undefined) {
+    intervalUsed = clientPredictedInterval;
+    mlInterval = clientPredictedInterval;
+    algorithmUsed = 'webgpu';
+
+    // Update question with client ML interval
+    question.memoryStrength = clientPredictedInterval;
+    question.mlRecommendedInterval = clientPredictedInterval;
+
   } else {
-    intervalUsed = baselineInterval;
-    // Baseline result already applied to question
+    // Server-side prediction (legacy path)
+    const algorithmMode = user.settings?.algorithmMode || 'ml';
+    algorithmUsed = algorithmMode;
+
+    // For A/B testing, randomly assign algorithm per card
+    if (algorithmMode === 'ab-test') {
+      algorithmUsed = question._id.toString().charCodeAt(0) % 2 === 0 ? 'baseline' : 'ml';
+    }
+
+    // Calculate ML prediction if available and needed
+    let mlPrediction = null;
+
+    if (mlModel && (algorithmUsed === 'ml' || algorithmMode === 'ab-test')) {
+      try {
+        mlPrediction = await predictMLInterval(question, mlModel);
+        mlInterval = mlPrediction.interval;
+      } catch (error) {
+        console.error('ML prediction failed, falling back to baseline:', error.message);
+        algorithmUsed = 'baseline';
+        mlInterval = baselineInterval;
+      }
+    }
+
+    // Determine which interval to use
+    if (algorithmUsed === 'ml' && mlInterval !== null) {
+      intervalUsed = mlInterval;
+      // Update question with ML interval
+      question.memoryStrength = mlInterval;
+      question.mlRecommendedInterval = mlInterval;
+      if (mlPrediction?.confidence) {
+        question.predictedRetention = mlPrediction.confidence;
+      }
+    } else {
+      intervalUsed = baselineInterval;
+      // Baseline result already applied to question
+    }
   }
 
   // Update question statistics

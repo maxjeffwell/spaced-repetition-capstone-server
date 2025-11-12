@@ -206,20 +206,34 @@ router.get('/progress', jwtAuth, (req, res, next) => {
       }
 
       // Calculate progress statistics
-      const cardStats = user.questions.map(q => ({
-        question: q.question,
-        timesCorrect: q.timesCorrect,
-        timesIncorrect: q.timesIncorrect,
-        successRate: q.timesCorrect / Math.max(1, q.timesCorrect + q.timesIncorrect),
-        consecutiveCorrect: q.consecutiveCorrect,
-        memoryStrength: q.memoryStrength,
-        lastReviewed: q.lastReviewed
-      }));
+      const cardStats = user.questions.map(q => {
+        const timesCorrect = q.timesCorrect || 0;
+        const timesIncorrect = q.timesIncorrect || 0;
+        const totalReviews = timesCorrect + timesIncorrect;
+
+        return {
+          question: q.question,
+          timesCorrect,
+          timesIncorrect,
+          totalReviews,
+          successRate: totalReviews > 0 ? timesCorrect / totalReviews : 0,
+          consecutiveCorrect: q.consecutiveCorrect || 0,
+          memoryStrength: q.memoryStrength || 1,
+          lastReviewed: q.lastReviewed
+        };
+      });
+
+      // Calculate overall statistics
+      const totalReviews = user.stats?.totalReviews || 0;
+      const correctAnswers = user.stats?.correctAnswers || 0;
+      const successRate = totalReviews > 0 ? correctAnswers / totalReviews : 0;
 
       res.json({
         stats: user.stats,
         cards: cardStats,
         totalCards: user.questions.length,
+        totalReviews,
+        successRate,
         masteredCards: user.questions.filter(q => q.consecutiveCorrect >= 3).length
       });
     })

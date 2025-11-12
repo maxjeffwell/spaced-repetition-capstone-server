@@ -9,7 +9,7 @@ IntervalAI combines traditional SM-2 spaced repetition with a neural network tha
 ## Features
 
 - **SM-2 Algorithm**: Traditional spaced repetition with quality-based intervals
-- **Neural Network**: 8-layer deep learning model (961 parameters) for interval prediction
+- **Neural Network**: 10-layer deep learning model with 51 engineered features for interval prediction
 - **Data Collection Pipeline**: Automatic training data extraction from user review history
 - **ML Training Service**: Automated model training with validation
 - **Authentication & Authorization**: Passport.js with JWT tokens

@@ -16,6 +16,14 @@
  * Total: 51 engineered features
  */
 
+// Polyfill for Node.js 24+ compatibility with TensorFlow.js
+const util = require('util');
+if (!util.isNullOrUndefined) {
+  util.isNullOrUndefined = function(value) {
+    return value === null || value === undefined;
+  };
+}
+
 // Use TensorFlow.js Node backend for proper file loading
 const tf = require('@tensorflow/tfjs-node');
 const path = require('path');

@@ -1,7 +1,7 @@
 services:
   # Backend API (Express + TensorFlow.js)
   - type: web
-    name: intervalai-api
+    name: spaced-repetition-api
     runtime: node
     buildCommand: npm install
     startCommand: npm start

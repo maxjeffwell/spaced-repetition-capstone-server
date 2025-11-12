@@ -57,3 +57,13 @@ typings/
 # dotenv environment variables file
 .env
 .idea/
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# ML model temporary files
+*.backup
+*.converted

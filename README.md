@@ -1,45 +1,80 @@
-# Thinkful Backend Template
+# IntervalAI - Server
 
-A template for developing and deploying Node.js apps.
+The backend API for IntervalAI, a neural-enhanced spaced repetition learning system.
 
-## Getting started
+## Overview
 
-### Setting up a project
+IntervalAI combines traditional SM-2 spaced repetition with a neural network that learns individual user patterns to provide personalized, optimal review intervals for maximum memory retention.
 
-* Move into your projects directory: `cd ~/YOUR_PROJECTS_DIRECTORY`
-* Clone this repository: `git clone https://github.com/Thinkful-Ed/backend-template YOUR_PROJECT_NAME`
-* Move into the project directory: `cd YOUR_PROJECT_NAME`
-* Install the dependencies: `npm install`
-* Create a new repo on GitHub: https://github.com/new
-    * Make sure the "Initialize this repository with a README" option is left unchecked
-* Update the remote to point to your GitHub repository: `git remote set-url origin https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME`
+## Features
 
-### Working on the project
+- **SM-2 Algorithm**: Traditional spaced repetition with quality-based intervals
+- **Neural Network**: 8-layer deep learning model (961 parameters) for interval prediction
+- **Data Collection Pipeline**: Automatic training data extraction from user review history
+- **ML Training Service**: Automated model training with validation
+- **Authentication & Authorization**: Passport.js with JWT tokens
+- **A/B Testing Framework**: Compare algorithm performance
 
-* Move into the project directory: `cd ~/YOUR_PROJECTS_DIRECTORY/YOUR_PROJECT_NAME`
-* Run the development task: `npm start`
-    * Starts a server running at http://localhost:8080
-    * Automatically restarts when any of your files change
+## Technology Stack
 
-## Databases
+- Node.js with Express
+- MongoDB with Mongoose
+- TensorFlow.js 4.22.0 & TensorFlow.js Node 4.22.0
+- Passport.js (authentication)
+- JWT (JSON Web Tokens)
 
-By default, the template is configured to connect to a MongoDB database using Mongoose.  It can be changed to connect to a PostgreSQL database using Knex by replacing any imports of `db-mongoose.js` with imports of `db-knex.js`, and uncommenting the Postgres `DATABASE_URL` lines in `config.js`.
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- MongoDB
+- npm
+
+### Installation
+
+```bash
+npm install
+```
+
+### Configuration
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+DATABASE_URL=mongodb://localhost:27017/intervalai
+JWT_SECRET=your-secret-key
+CLIENT_ORIGIN=http://localhost:3000
+```
+
+### Development
+
+```bash
+npm run dev
+```
+
+Starts the server with automatic restart on file changes using nodemon.
+
+### Production
+
+```bash
+npm start
+```
+
+Starts the server at http://localhost:8080 (or the port specified in your environment).
+
+### Testing
+
+```bash
+npm test
+```
+
+Runs the test suite using Mocha.
+
+## API Endpoints
+
+See the main project documentation for detailed API endpoint information.
 
 ## Deployment
 
-Requires the [Heroku CLI client](https://devcenter.heroku.com/articles/heroku-command-line).
-
-### Setting up the project on Heroku
-
-* Move into the project directory: `cd ~/YOUR_PROJECTS_DIRECTORY/YOUR_PROJECT_NAME`
-* Create the Heroku app: `heroku create PROJECT_NAME`
-
-* If your backend connects to a database, you need to configure the database URL:
-    * For a MongoDB database: `heroku config:set DATABASE_URL=mongodb://USERNAME:PASSWORD@HOST:PORT/DATABASE_NAME`
-    * For a PostgreSQL database: `heroku config:set DATABASE_URL=postgresql://USERNAME:PASSWORD@HOST:PORT/DATABASE_NAME`
-
-* If you are creating a full-stack app, you need to configure the client origin: `heroku config:set CLIENT_ORIGIN=https://www.YOUR_DEPLOYED_CLIENT.com`
-
-### Deploying to Heroku
-
-* Push your code to Heroku: `git push heroku master`
+The server is configured for deployment to Heroku or similar platforms. See the main project documentation for deployment instructions.

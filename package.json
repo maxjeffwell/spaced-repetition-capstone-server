@@ -1,7 +1,7 @@
 {
-  "name": "thinkful-backend-template",
+  "name": "intervalai-server",
   "version": "1.0.0",
-  "description": "Template for an Express backend",
+  "description": "IntervalAI - Neural-enhanced spaced repetition learning system backend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -13,7 +13,7 @@
     "build": "node index.js",
     "travis": "npm run mocha"
   },
-  "author": "Joe Turner <jturner@thinkful.com>",
+  "author": "IntervalAI Team",
   "license": "MIT",
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",

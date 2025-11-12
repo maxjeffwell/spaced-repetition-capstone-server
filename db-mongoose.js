@@ -6,11 +6,7 @@ mongoose.Promise = global.Promise;
 const { MONGODB_URI } = require('./config');
 
 function dbConnect(url = MONGODB_URI) {
-  return mongoose.connect(url, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useCreateIndex: true
-  })
+  return mongoose.connect(url)
     .catch(err => {
       console.error('Mongoose failed to connect');
       console.error(err);

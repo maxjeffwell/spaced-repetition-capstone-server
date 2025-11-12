@@ -79,6 +79,7 @@ function calculateInteractionFeatures(features) {
 /**
  * Create polynomial features (squares and higher-order terms)
  * Captures non-linear relationships
+ * MUST MATCH Python training script exactly!
  */
 function calculatePolynomialFeatures(features) {
   const {
@@ -86,7 +87,7 @@ function calculatePolynomialFeatures(features) {
     difficultyRating,
     timeSinceLastReview,
     successRate,
-    consecutiveCorrect
+    totalReviews
   } = features;
 
   return {
@@ -96,187 +97,115 @@ function calculatePolynomialFeatures(features) {
     timeSquared: timeSinceLastReview * timeSinceLastReview,
     successRateSquared: successRate * successRate,
 
-    // Cubic features for important variables
+    // Cubic features
     memoryStrengthCubed: Math.pow(memoryStrength, 3),
+    timeCubed: Math.pow(timeSinceLastReview, 3),
 
-    // Square root features (diminishing returns)
-    sqrtMemoryStrength: Math.sqrt(memoryStrength),
-    sqrtTotalReviews: Math.sqrt(features.totalReviews),
-
-    // Inverse features
-    inverseMemoryStrength: memoryStrength > 0 ? 1 / memoryStrength : 0,
-    inverseDifficulty: difficultyRating > 0.01 ? 1 / difficultyRating : 100
+    // Square root features
+    sqrtMemoryStrength: Math.sqrt(Math.max(memoryStrength, 0)),
+    sqrtTime: Math.sqrt(Math.max(timeSinceLastReview, 0)),
+    sqrtTotalReviews: Math.sqrt(Math.max(totalReviews, 0))
   };
 }
 
 /**
  * Encode time of day with sinusoidal features
- * Better captures cyclical nature of time
+ * MUST MATCH Python training script exactly!
  */
 function encodeCyclicalTime(timeOfDay) {
   // timeOfDay is 0-1 (0 = midnight, 0.5 = noon, 1 = midnight)
   const radians = timeOfDay * 2 * Math.PI;
 
   return {
-    timeOfDaySin: Math.sin(radians),
-    timeOfDayCos: Math.cos(radians),
-    // Categorize into time periods
-    isMorning: timeOfDay >= 0.25 && timeOfDay < 0.5 ? 1 : 0,    // 6am-12pm
-    isAfternoon: timeOfDay >= 0.5 && timeOfDay < 0.75 ? 1 : 0,  // 12pm-6pm
-    isEvening: timeOfDay >= 0.75 || timeOfDay < 0.25 ? 1 : 0    // 6pm-6am
+    timeSin: Math.sin(radians),
+    timeCos: Math.cos(radians),
+    timeSin2: Math.sin(2 * radians),
+    timeCos2: Math.cos(2 * radians),
+    timePhase: Math.atan2(Math.sin(radians), Math.cos(radians))
   };
 }
 
 /**
- * Calculate moving average features from review history
- * Captures trends in performance
+ * Calculate moving average features
+ * MUST MATCH Python training script exactly!
+ * Simplified version - no history required
  */
-function calculateMovingAverageFeatures(reviewHistory, currentIndex = null) {
-  if (!reviewHistory || reviewHistory.length === 0) {
-    return {
-      recentSuccessRate: 0,
-      recentAvgResponseTime: 0,
-      performanceTrend: 0,
-      difficultyTrend: 0,
-      velocityTrend: 0
-    };
-  }
-
-  // Use last N reviews for moving average (or all if currentIndex specified)
-  const lookbackWindow = 5;
-  const reviews = currentIndex !== null
-    ? reviewHistory.slice(Math.max(0, currentIndex - lookbackWindow), currentIndex + 1)
-    : reviewHistory.slice(-lookbackWindow);
-
-  if (reviews.length === 0) {
-    return {
-      recentSuccessRate: 0,
-      recentAvgResponseTime: 0,
-      performanceTrend: 0,
-      difficultyTrend: 0,
-      velocityTrend: 0
-    };
-  }
-
-  // Recent success rate (last 5 reviews)
-  const recentSuccesses = reviews.filter(r => r.recalled).length;
-  const recentSuccessRate = recentSuccesses / reviews.length;
-
-  // Recent average response time
-  const recentAvgResponseTime = reviews.reduce((sum, r) => sum + r.responseTime, 0) / reviews.length;
-
-  // Performance trend (comparing first half to second half of recent reviews)
-  let performanceTrend = 0;
-  if (reviews.length >= 4) {
-    const midpoint = Math.floor(reviews.length / 2);
-    const firstHalfSuccess = reviews.slice(0, midpoint).filter(r => r.recalled).length / midpoint;
-    const secondHalfSuccess = reviews.slice(midpoint).filter(r => r.recalled).length / (reviews.length - midpoint);
-    performanceTrend = secondHalfSuccess - firstHalfSuccess; // Positive = improving
-  }
-
-  // Difficulty trend (based on intervals used)
-  let difficultyTrend = 0;
-  if (reviews.length >= 2) {
-    const intervals = reviews.map(r => r.intervalUsed || 1);
-    difficultyTrend = (intervals[intervals.length - 1] - intervals[0]) / Math.max(intervals[0], 1);
-  }
-
-  // Velocity trend (how quickly moving through material)
-  let velocityTrend = 0;
-  if (reviews.length >= 3) {
-    const timeDiffs = [];
-    for (let i = 1; i < reviews.length; i++) {
-      timeDiffs.push(reviews[i].timestamp - reviews[i - 1].timestamp);
-    }
-    const avgTimeDiff = timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length;
-    velocityTrend = avgTimeDiff / (1000 * 60 * 60 * 24); // Convert to days
-  }
-
-  return {
-    recentSuccessRate,
-    recentAvgResponseTime,
-    performanceTrend,        // -1 to 1, positive = improving
-    difficultyTrend,         // Relative change in intervals
-    velocityTrend            // Days between reviews
-  };
-}
-
-/**
- * Calculate momentum features (learning acceleration)
- */
-function calculateMomentumFeatures(features, movingAvgFeatures) {
+function calculateMovingAverageFeatures(baseFeatures) {
   const {
+    difficultyRating,
+    averageResponseTime,
+    successRate,
+    timeSinceLastReview,
+    totalReviews
+  } = baseFeatures;
+
+  // Simplified moving averages (no history in clean data)
+  return {
+    maDifficulty: difficultyRating,
+    maResponseTime: averageResponseTime / 1000, // Convert to seconds
+    maSuccessRate: successRate,
+    maInterval: timeSinceLastReview,
+    reviewFrequency: totalReviews / Math.max(timeSinceLastReview, 1)
+  };
+}
+
+/**
+ * Calculate momentum features
+ * MUST MATCH Python training script exactly!
+ */
+function calculateMomentumFeatures(baseFeatures) {
+  const {
+    memoryStrength,
     successRate,
     consecutiveCorrect,
     totalReviews
-  } = features;
+  } = baseFeatures;
 
-  const {
-    recentSuccessRate,
-    performanceTrend
-  } = movingAvgFeatures;
+  const learningVelocity = consecutiveCorrect / Math.max(totalReviews, 1);
+  const difficultyTrend = 0; // Would calculate from history
+  const performanceAcceleration = successRate - 0.5; // Baseline at 0.5
+  const masteryMomentum = learningVelocity * memoryStrength;
 
   return {
-    // Learning momentum (recent vs overall performance)
-    learningMomentum: recentSuccessRate - successRate,
-
-    // Streak strength (consecutive correct scaled by total experience)
-    streakStrength: totalReviews > 0 ? consecutiveCorrect / Math.sqrt(totalReviews) : 0,
-
-    // Acceleration (how fast is performance changing)
-    performanceAcceleration: performanceTrend,
-
-    // Mastery level (combination of success rate and consistency)
-    masteryLevel: successRate * (1 - Math.abs(recentSuccessRate - successRate))
+    learningVelocity,
+    difficultyTrend,
+    performanceAcceleration,
+    masteryMomentum
   };
 }
 
 /**
  * Calculate retention prediction features
- * Based on cognitive science research
+ * MUST MATCH Python training script exactly!
  */
-function calculateRetentionFeatures(features, forgettingCurveFeatures) {
+function calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures) {
   const {
     memoryStrength,
     difficultyRating,
     timeSinceLastReview,
     successRate,
-    consecutiveCorrect,
-    totalReviews
-  } = features;
+    averageResponseTime
+  } = baseFeatures;
 
-  // Stability (how well-learned is this item)
-  // Based on: number of successful reviews, intervals used
-  const stability = Math.log1p(consecutiveCorrect) * Math.log1p(memoryStrength);
-
-  // Retrievability (how easy to recall right now)
-  // Based on forgetting curve and time since review
-  const retrievability = forgettingCurveFeatures.forgettingCurve * (1 - difficultyRating);
-
-  // Learning efficiency (how well the learner learns this item)
-  const learningEfficiency = totalReviews > 0
-    ? successRate / Math.log1p(totalReviews)
-    : 0;
-
-  // Predicted retention probability (simple model)
-  const retentionProbability = Math.min(1, retrievability * (1 + stability * 0.1));
-
-  // Optimal interval estimate (when retention drops to 90%)
-  // R(t) = e^(-t/S) = 0.9 => t = -S * ln(0.9)
-  const optimalIntervalEstimate = Math.max(1, memoryStrength * Math.abs(Math.log(0.9)) * (1 + stability * 0.1));
+  const predictedRetention = forgettingCurveFeatures.forgettingCurve * successRate;
+  const confidenceScore = successRate * (1 - difficultyRating);
+  const stabilityIndex = memoryStrength / Math.max(timeSinceLastReview, 0.1);
+  const learningEfficiency = successRate / Math.max(averageResponseTime / 1000, 0.1);
+  const optimalIntervalEstimate = memoryStrength * (1 + successRate);
 
   return {
-    stability,
-    retrievability,
+    predictedRetention,
+    confidenceScore,
+    stabilityIndex,
     learningEfficiency,
-    retentionProbability,
     optimalIntervalEstimate
   };
 }
 
 /**
  * Master function to create all advanced features
- * Expands 8 base features to 60+ features
+ * MUST MATCH Python training script exactly!
+ * Expands 8 base features to 51 total features
  */
 function createAdvancedFeatureVector(baseFeatures, reviewHistory = null, currentIndex = null) {
   // 1. Forgetting curve features (5 features)
@@ -295,11 +224,11 @@ function createAdvancedFeatureVector(baseFeatures, reviewHistory = null, current
   // 4. Cyclical time encoding (5 features)
   const timeFeatures = encodeCyclicalTime(baseFeatures.timeOfDay);
 
-  // 5. Moving average features (5 features)
-  const movingAvgFeatures = calculateMovingAverageFeatures(reviewHistory, currentIndex);
+  // 5. Moving average features (5 features) - simplified, no history needed
+  const movingAvgFeatures = calculateMovingAverageFeatures(baseFeatures);
 
   // 6. Momentum features (4 features)
-  const momentumFeatures = calculateMomentumFeatures(baseFeatures, movingAvgFeatures);
+  const momentumFeatures = calculateMomentumFeatures(baseFeatures);
 
   // 7. Retention prediction features (5 features)
   const retentionFeatures = calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures);
@@ -341,6 +270,7 @@ function createAdvancedFeatureVector(baseFeatures, reviewHistory = null, current
 
 /**
  * Get feature vector as array in consistent order
+ * MUST MATCH Python training script exactly!
  * Returns 51-dimensional feature vector
  */
 function getFeatureArray(advancedFeatures) {
@@ -350,7 +280,7 @@ function getFeatureArray(advancedFeatures) {
     advancedFeatures.difficultyRating,
     advancedFeatures.timeSinceLastReview,
     advancedFeatures.successRate,
-    advancedFeatures.averageResponseTime,
+    advancedFeatures.averageResponseTime, // Already in seconds
     advancedFeatures.totalReviews,
     advancedFeatures.consecutiveCorrect,
     advancedFeatures.timeOfDay,
@@ -380,74 +310,73 @@ function getFeatureArray(advancedFeatures) {
     advancedFeatures.timeSquared,
     advancedFeatures.successRateSquared,
     advancedFeatures.memoryStrengthCubed,
+    advancedFeatures.timeCubed,
     advancedFeatures.sqrtMemoryStrength,
+    advancedFeatures.sqrtTime,
     advancedFeatures.sqrtTotalReviews,
-    advancedFeatures.inverseMemoryStrength,
-    advancedFeatures.inverseDifficulty,
 
     // Cyclical time features (5)
-    advancedFeatures.timeOfDaySin,
-    advancedFeatures.timeOfDayCos,
-    advancedFeatures.isMorning,
-    advancedFeatures.isAfternoon,
-    advancedFeatures.isEvening,
+    advancedFeatures.timeSin,
+    advancedFeatures.timeCos,
+    advancedFeatures.timeSin2,
+    advancedFeatures.timeCos2,
+    advancedFeatures.timePhase,
 
     // Moving average features (5)
-    advancedFeatures.recentSuccessRate,
-    advancedFeatures.recentAvgResponseTime / 1000, // Convert to seconds
-    advancedFeatures.performanceTrend,
-    advancedFeatures.difficultyTrend,
-    advancedFeatures.velocityTrend,
+    advancedFeatures.maDifficulty,
+    advancedFeatures.maResponseTime, // Already in seconds
+    advancedFeatures.maSuccessRate,
+    advancedFeatures.maInterval,
+    advancedFeatures.reviewFrequency,
 
     // Momentum features (4)
-    advancedFeatures.learningMomentum,
-    advancedFeatures.streakStrength,
+    advancedFeatures.learningVelocity,
+    advancedFeatures.difficultyTrend,
     advancedFeatures.performanceAcceleration,
-    advancedFeatures.masteryLevel,
+    advancedFeatures.masteryMomentum,
 
     // Retention prediction features (5)
-    advancedFeatures.stability,
-    advancedFeatures.retrievability,
+    advancedFeatures.predictedRetention,
+    advancedFeatures.confidenceScore,
+    advancedFeatures.stabilityIndex,
     advancedFeatures.learningEfficiency,
-    advancedFeatures.retentionProbability,
     advancedFeatures.optimalIntervalEstimate
   ];
 }
 
 /**
  * Get feature names in order (for debugging and interpretability)
+ * MUST MATCH Python training script exactly!
  */
 function getFeatureNames() {
   return [
-    // Base features
+    // Base features (8)
     'memoryStrength', 'difficultyRating', 'timeSinceLastReview', 'successRate',
     'averageResponseTime', 'totalReviews', 'consecutiveCorrect', 'timeOfDay',
 
-    // Forgetting curve features
+    // Forgetting curve features (5)
     'forgettingCurve', 'adjustedDecay', 'logTimeDecay', 'logMemoryStrength', 'decayRate',
 
-    // Interaction features
+    // Interaction features (10)
     'difficultyTimeProduct', 'difficultyMemoryProduct', 'successMemoryProduct', 'successTimeProduct',
     'responseTimeDifficultyProduct', 'responseTimeMemoryProduct', 'consecutiveMemoryProduct',
     'consecutiveDifficultyRatio', 'experienceSuccessProduct', 'experienceDifficultyRatio',
 
-    // Polynomial features
+    // Polynomial features (9)
     'memoryStrengthSquared', 'difficultySquared', 'timeSquared', 'successRateSquared',
-    'memoryStrengthCubed', 'sqrtMemoryStrength', 'sqrtTotalReviews',
-    'inverseMemoryStrength', 'inverseDifficulty',
+    'memoryStrengthCubed', 'timeCubed', 'sqrtMemoryStrength', 'sqrtTime', 'sqrtTotalReviews',
 
-    // Cyclical time features
-    'timeOfDaySin', 'timeOfDayCos', 'isMorning', 'isAfternoon', 'isEvening',
+    // Cyclical time features (5)
+    'timeSin', 'timeCos', 'timeSin2', 'timeCos2', 'timePhase',
 
-    // Moving average features
-    'recentSuccessRate', 'recentAvgResponseTime', 'performanceTrend',
-    'difficultyTrend', 'velocityTrend',
+    // Moving average features (5)
+    'maDifficulty', 'maResponseTime', 'maSuccessRate', 'maInterval', 'reviewFrequency',
 
-    // Momentum features
-    'learningMomentum', 'streakStrength', 'performanceAcceleration', 'masteryLevel',
+    // Momentum features (4)
+    'learningVelocity', 'difficultyTrend', 'performanceAcceleration', 'masteryMomentum',
 
-    // Retention prediction features
-    'stability', 'retrievability', 'learningEfficiency', 'retentionProbability',
+    // Retention prediction features (5)
+    'predictedRetention', 'confidenceScore', 'stabilityIndex', 'learningEfficiency',
     'optimalIntervalEstimate'
   ];
 }

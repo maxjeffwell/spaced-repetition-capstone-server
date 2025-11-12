@@ -67,9 +67,7 @@ class MLService {
    * Get the ML model instance
    */
   getModel() {
-    // TEMPORARILY DISABLED: Keras 3 format incompatible with TensorFlow.js Node v4.23
-    // Using baseline SM-2 algorithm until TensorFlow.js adds full Keras 3 support
-    return null;
+    return this.isReady ? this.model : null;
   }
 
   /**

@@ -17,7 +17,6 @@
   "license": "MIT",
   "dependencies": {
     "@tensorflow/tfjs": "^4.23.0-rc.0",
-    "@tensorflow/tfjs-node": "^4.23.0-rc.0",
     "@tensorflow/tfjs-node-gpu": "^4.22.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",

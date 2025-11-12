@@ -62,6 +62,7 @@ typings/
 venv/
 env/
 ENV/
+venv-training/
 .venv
 
 # ML model temporary files

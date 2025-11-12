@@ -43,8 +43,7 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
     mlInterval = clientPredictedInterval;
     algorithmUsed = 'webgpu';
 
-    // Update question with client ML interval
-    question.memoryStrength = clientPredictedInterval;
+    // Save ML recommendation (memoryStrength will be updated by updateLinkedList)
     question.mlRecommendedInterval = clientPredictedInterval;
 
   } else {
@@ -74,8 +73,7 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
     // Determine which interval to use
     if (algorithmUsed === 'ml' && mlInterval !== null) {
       intervalUsed = mlInterval;
-      // Update question with ML interval
-      question.memoryStrength = mlInterval;
+      // Save ML recommendation (memoryStrength will be updated by updateLinkedList)
       question.mlRecommendedInterval = mlInterval;
       if (mlPrediction?.confidence) {
         question.predictedRetention = mlPrediction.confidence;

@@ -1,7 +1,7 @@
 services:
   # Backend API (Express + TensorFlow.js)
   - type: web
-    name: spaced-repetition-api
+    name: spaced-repetition-capstone-server
     runtime: node
     buildCommand: npm install
     startCommand: npm start

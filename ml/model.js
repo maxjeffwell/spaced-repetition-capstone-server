@@ -331,7 +331,10 @@ class IntervalPredictionModel {
     );
 
     this.featureStats.mean = tf.tensor1d(stats.mean);
-    this.featureStats.std = tf.tensor1d(stats.std);
+    // Clamp std to minimum value to avoid division by zero
+    const MIN_STD = 1e-7;
+    const clampedStd = stats.std.map(s => Math.max(Math.abs(s), MIN_STD));
+    this.featureStats.std = tf.tensor1d(clampedStd);
 
     this.isLoaded = true;
     console.log(`✓ Model loaded from ${loadPath}`);

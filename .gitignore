@@ -96,7 +96,8 @@ training-data-*.json
 # ML model files (regeneratable)
 *.h5
 *.pb
-saved-model*/
+# saved-model*/ - commented out to allow committing ml/saved-model for production
+saved-model-old*/
 *.keras
 *.tflite
 *.onnx

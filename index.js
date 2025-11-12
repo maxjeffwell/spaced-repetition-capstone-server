@@ -1,5 +1,14 @@
 'use strict';
 
+// Polyfill for Node.js 24+ compatibility with TensorFlow.js
+// util.isNullOrUndefined was removed in Node.js 18+
+const util = require('util');
+if (!util.isNullOrUndefined) {
+  util.isNullOrUndefined = function(value) {
+    return value === null || value === undefined;
+  };
+}
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');

@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 'use strict';
 
+// Polyfill for Node.js 24+ compatibility with TensorFlow.js
+const util = require('util');
+if (!util.isNullOrUndefined) {
+  util.isNullOrUndefined = function(value) {
+    return value === null || value === undefined;
+  };
+}
+
 const IntervalPredictionModel = require('../ml/model');
 const { createFeatureVector } = require('../utils/question-helpers');
 

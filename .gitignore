@@ -68,3 +68,42 @@ venv-training/
 # ML model temporary files
 *.backup
 *.converted
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.vscode/
+*.swp
+*.swo
+*~
+
+# ML training data (regeneratable)
+training-data*.json
+training-data-*.json
+
+# ML model files (regeneratable)
+*.h5
+*.pb
+saved-model*/
+*.keras
+*.tflite
+*.onnx
+
+# ML training outputs
+checkpoints/
+tensorboard/
+*.ckpt
+*.index
+*.meta

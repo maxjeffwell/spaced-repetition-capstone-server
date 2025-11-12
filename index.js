@@ -14,6 +14,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const passport = require('passport');
+const path = require('path');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
@@ -60,11 +61,24 @@ app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', authRouter);
 
+// Serve static files from React build (production)
+const clientBuildPath = path.join(__dirname, '../spaced-repetition-capstone-client/build');
+app.use(express.static(clientBuildPath));
 
+// Serve ML model files
+const mlModelPath = path.join(__dirname, '../spaced-repetition-capstone-client/public/models');
+app.use('/models', express.static(mlModelPath));
+
+// Catch-all for client-side routing - serve index.html for non-API routes
+// This enables React Router to work when refreshing on routes like /learn
 app.use((req, res, next) => {
-  const err = new Error ('Not found');
-  err.status = 404;
-  next(err);
+  // Skip API routes
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+
+  // For all other routes, serve index.html to enable client-side routing
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
 app.use((err, req, res, next) => {

@@ -8,7 +8,8 @@ const { MONGODB_URI } = require('./config');
 function dbConnect(url = MONGODB_URI) {
   return mongoose.connect(url, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
+      useCreateIndex: true
   })
     .catch(err => {
       console.error('Mongoose failed to connect');

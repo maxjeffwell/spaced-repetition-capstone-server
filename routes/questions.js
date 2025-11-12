@@ -34,6 +34,18 @@ router.get('/next', jwtAuth, (req, res, next) => {
         });
       }
 
+      // Calculate performance-based features
+      const totalReviews = (nextQuestion.timesCorrect || 0) + (nextQuestion.timesIncorrect || 0);
+      const successRate = totalReviews > 0
+        ? nextQuestion.timesCorrect / totalReviews
+        : 0;
+
+      // Calculate memoryStrength based on performance, not just database value
+      const baseInterval = nextQuestion.memoryStrength || 1;
+      const performanceMultiplier = 1 + (successRate * 0.5); // Up to 1.5x for perfect performance
+      const experienceBonus = Math.min(2, 1 + Math.log(totalReviews + 1) * 0.1); // Gradual increase
+      const calculatedMemoryStrength = Math.max(1, Math.min(90, baseInterval * performanceMultiplier * experienceBonus));
+
       // Return question without answer, including features for client-side ML prediction
       res.json({
         question: nextQuestion.question,
@@ -46,14 +58,14 @@ router.get('/next', jwtAuth, (req, res, next) => {
         },
         // Question features for client-side prediction
         questionFeatures: {
-          memoryStrength: nextQuestion.memoryStrength || 1,
+          memoryStrength: calculatedMemoryStrength, // Use calculated value
           difficultyRating: nextQuestion.difficultyRating || 0.5,
           timeSinceLastReview: nextQuestion.lastReviewDate
             ? (Date.now() - new Date(nextQuestion.lastReviewDate).getTime()) / (1000 * 60 * 60 * 24)
             : 0,
-          successRate: nextQuestion.timesCorrect / Math.max(1, nextQuestion.timesCorrect + nextQuestion.timesIncorrect),
+          successRate,
           averageResponseTime: nextQuestion.averageResponseTime || 0,
-          totalReviews: nextQuestion.timesCorrect + nextQuestion.timesIncorrect,
+          totalReviews,
           consecutiveCorrect: nextQuestion.consecutiveCorrect || 0,
           timeOfDay: new Date().getHours() / 24
         },

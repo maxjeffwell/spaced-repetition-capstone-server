@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# Development
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Documentation
+*.md
+!README.md
+
+# ML Training data (optional - include if models are pre-trained)
+training-data/
+scripts/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

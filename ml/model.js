@@ -24,8 +24,9 @@ if (!util.isNullOrUndefined) {
   };
 }
 
-// Use TensorFlow.js Node GPU backend for proper file loading
-const tf = require('@tensorflow/tfjs-node-gpu');
+// Use TensorFlow.js Node backend for proper file loading
+// Changed from tfjs-node-gpu to tfjs for compatibility with systems without CUDA
+const tf = require('@tensorflow/tfjs');
 const path = require('path');
 const {
   createAdvancedFeatureVector,

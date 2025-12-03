@@ -4,7 +4,7 @@
 # ============================================
 # Production Stage
 # ============================================
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 
 # Set working directory
 WORKDIR /app
@@ -14,17 +14,20 @@ COPY package*.json ./
 
 # Install production dependencies
 # Note: TensorFlow.js requires build dependencies
-RUN apk add --no-cache python3 make g++ && \
+RUN apt-get update && \
+    apt-get install -y python3 make g++ && \
     npm ci --only=production && \
     npm cache clean --force && \
-    apk del python3 make g++
+    apt-get purge -y python3 make g++ && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . .
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+RUN groupadd -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs nodejs && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user
@@ -43,13 +46,15 @@ CMD ["npm", "start"]
 # ============================================
 # Development Stage
 # ============================================
-FROM node:20-alpine AS development
+FROM node:20-slim AS development
 
 # Set working directory
 WORKDIR /app
 
 # Install build dependencies for TensorFlow.js
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && \
+    apt-get install -y python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./

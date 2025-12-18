@@ -101,24 +101,24 @@ const insights = [
       advancedFeatures.forgettingCurve > 0.4 ? 'Moderate retention' : 'Weak retention'
   },
   {
-    name: 'Retention Probability',
-    value: advancedFeatures.retentionProbability,
+    name: 'Predicted Retention',
+    value: advancedFeatures.predictedRetention,
     description: 'ML-based retention estimate',
-    interpretation: `${(advancedFeatures.retentionProbability * 100).toFixed(1)}% likely to recall`
+    interpretation: `${(advancedFeatures.predictedRetention * 100).toFixed(1)}% likely to recall`
   },
   {
-    name: 'Learning Momentum',
-    value: advancedFeatures.learningMomentum,
+    name: 'Mastery Momentum',
+    value: advancedFeatures.masteryMomentum,
     description: 'Recent performance vs overall',
-    interpretation: advancedFeatures.learningMomentum > 0 ? 'Improving' :
-      advancedFeatures.learningMomentum < 0 ? 'Declining' : 'Stable'
+    interpretation: advancedFeatures.masteryMomentum > 0 ? 'Improving' :
+      advancedFeatures.masteryMomentum < 0 ? 'Declining' : 'Stable'
   },
   {
-    name: 'Mastery Level',
-    value: advancedFeatures.masteryLevel,
-    description: 'Overall proficiency with this item',
-    interpretation: advancedFeatures.masteryLevel > 0.7 ? 'High mastery' :
-      advancedFeatures.masteryLevel > 0.4 ? 'Moderate mastery' : 'Low mastery'
+    name: 'Learning Efficiency',
+    value: advancedFeatures.learningEfficiency,
+    description: 'Overall learning efficiency score',
+    interpretation: advancedFeatures.learningEfficiency > 0.5 ? 'High efficiency' :
+      advancedFeatures.learningEfficiency > 0.2 ? 'Moderate efficiency' : 'Low efficiency'
   },
   {
     name: 'Optimal Interval Estimate',

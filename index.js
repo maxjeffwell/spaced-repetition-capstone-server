@@ -57,6 +57,11 @@ app.use(
 passport.use(jwtStrategy);
 passport.use(localStrategy);
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: Date.now() });
+});
+
 app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', authRouter);

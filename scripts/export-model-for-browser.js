@@ -39,14 +39,19 @@ async function exportModelForBrowser(modelPath = 'ml/saved-model', outputDir = '
     fs.readFileSync(path.join(sourcePath, 'normalization-stats.json'), 'utf8')
   );
 
+  // Handle different Keras model structures (Sequential vs Functional)
+  const modelConfig = modelData.modelTopology.model_config ? 
+                     modelData.modelTopology.model_config.config : 
+                     modelData.modelTopology.config;
+
   console.log('\n📊 Model Information:');
-  console.log(`   Layers: ${modelData.modelTopology.config.layers.length}`);
+  console.log(`   Layers: ${modelConfig.layers.length}`);
   console.log(`   Weight tensors: ${modelData.weightsManifest.length}`);
   console.log(`   Features: 8 dimensions`);
   console.log(`   Output: 1 dimension (interval in days)`);
 
   // Extract layer names from topology and create proper weight names
-  const layers = modelData.modelTopology.config.layers.filter(layer =>
+  const layers = modelConfig.layers.filter(layer =>
     layer.class_name === 'Dense'
   );
 

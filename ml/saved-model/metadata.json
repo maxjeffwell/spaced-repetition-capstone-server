@@ -1,15 +1,15 @@
 {
   "modelVersion": "4.0.0-advanced",
-  "trainedDate": "2025-11-12T11:03:51.123121",
+  "trainedDate": "2025-12-19T12:03:05.909365",
   "numFeatures": 51,
   "architecture": "51\u2192128\u219264\u219232\u219216\u21921",
-  "trainingSize": 1193,
-  "testSize": 299,
+  "trainingSize": 7271,
+  "testSize": 1818,
   "performance": {
-    "testMAE": 1.385389804840088,
-    "testLoss": 5.692814826965332,
-    "baselineMAE": 15.983926773071289,
-    "improvement": 91.33261108398438
+    "testMAE": 2.424663782119751,
+    "testLoss": 17.24196434020996,
+    "baselineMAE": 30.83936882019043,
+    "improvement": 92.13776397705078
   },
   "training": {
     "epochs": 100,
@@ -19,6 +19,6 @@
   },
   "features": "51 advanced features with forgetting curves, interactions, polynomial, cyclical time, moving averages, momentum, and retention prediction",
   "exportMethod": "tensorflowjs_converter_cli_advanced",
-  "kerasVersion": "2.19.0",
+  "kerasVersion": "2.20.1",
   "trainedOnGPU": false
 }

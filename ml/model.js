@@ -16,16 +16,8 @@
  * Total: 51 engineered features
  */
 
-// Polyfill for Node.js 24+ compatibility with TensorFlow.js
-const util = require('util');
-if (!util.isNullOrUndefined) {
-  util.isNullOrUndefined = function(value) {
-    return value === null || value === undefined;
-  };
-}
-
-// Use TensorFlow.js Node backend for proper file loading
-const tf = require('@tensorflow/tfjs-node');
+// Use TensorFlow.js with automatic fallback (native -> pure JS)
+const tf = require('./tf-loader');
 const path = require('path');
 const {
   createAdvancedFeatureVector,
@@ -316,14 +308,43 @@ class IntervalPredictionModel {
 
   /**
    * Load model from disk (TensorFlow.js format)
+   * Supports both native tfjs-node (file://) and pure JS (custom loader)
    */
   async load(modelPath = 'ml/saved-model') {
     const fs = require('fs');
     const loadPath = path.resolve(modelPath);
 
-    // Use TensorFlow.js built-in loader for proper format support
-    const modelFile = `file://${path.join(loadPath, 'model.json')}`;
-    this.model = await tf.loadLayersModel(modelFile);
+    // Check if using native backend (supports file:// protocol)
+    if (tf.isNative) {
+      const modelFile = `file://${path.join(loadPath, 'model.json')}`;
+      this.model = await tf.loadLayersModel(modelFile);
+    } else {
+      // Pure JS mode: use custom IOHandler for filesystem access
+      const modelJsonPath = path.join(loadPath, 'model.json');
+      const modelJson = JSON.parse(fs.readFileSync(modelJsonPath, 'utf8'));
+
+      // Create IOHandler for pure JS mode
+      const customLoader = {
+        load: async () => {
+          // Load weights from binary file
+          const weightsPath = path.join(loadPath, 'group1-shard1of1.bin');
+          let weightData;
+
+          if (fs.existsSync(weightsPath)) {
+            const buffer = fs.readFileSync(weightsPath);
+            weightData = new Uint8Array(buffer).buffer;
+          }
+
+          return {
+            modelTopology: modelJson.modelTopology,
+            weightSpecs: modelJson.weightsManifest?.[0]?.weights || [],
+            weightData: weightData
+          };
+        }
+      };
+
+      this.model = await tf.loadLayersModel(customLoader);
+    }
 
     // Load normalization stats
     const stats = JSON.parse(
@@ -337,7 +358,7 @@ class IntervalPredictionModel {
     this.featureStats.std = tf.tensor1d(clampedStd);
 
     this.isLoaded = true;
-    console.log(`✓ Model loaded from ${loadPath}`);
+    console.log(`✓ Model loaded from ${loadPath} (backend: ${tf.loadedBackend})`);
   }
 
   /**

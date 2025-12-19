@@ -1,5 +1,11 @@
 # Dependencies
 node_modules/
+
+# Python virtual environments
+venv/
+venv-training/
+__pycache__/
+*.pyc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

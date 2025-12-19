@@ -35,8 +35,20 @@ FROM node:20-slim AS production
 # Set working directory
 WORKDIR /app
 
+# TensorFlow.js backend - auto-detect by default
+# Will try: GPU → Native CPU (AVX) → Pure JavaScript
+# Override in deployment:
+#   - TFJS_BACKEND=node for production servers with AVX (AMD EPYC, Intel Xeon)
+#   - TFJS_BACKEND=cpu for budget CPUs without AVX (Celeron N5105, Atom)
+#   - TFJS_BACKEND=gpu for GPU-enabled containers
+# ENV TFJS_BACKEND=auto  # Uncomment to force auto-detection
+
 # Copy package files
 COPY package*.json ./
+
+# Create non-root user for security BEFORE copying files
+RUN groupadd -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs nodejs
 
 # Install production dependencies
 # Note: TensorFlow.js requires build dependencies
@@ -49,13 +61,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy application code
-COPY . .
-
-# Create non-root user for security
-RUN groupadd -g 1001 nodejs && \
-    useradd -r -u 1001 -g nodejs nodejs && \
-    chown -R nodejs:nodejs /app
+# Copy application code with correct ownership (avoids extra chown layer)
+COPY --chown=nodejs:nodejs . .
 
 # Switch to non-root user
 USER nodejs

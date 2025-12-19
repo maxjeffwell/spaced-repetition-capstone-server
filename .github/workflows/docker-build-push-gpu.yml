@@ -25,7 +25,7 @@ jobs:
 
       # Free up disk space to prevent "No space left on device" errors for large GPU images
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space-main@v1
+        uses: jlumbroso/free-disk-space-main
         with:
           # This frees ~30GB of space
           tool-cache: true

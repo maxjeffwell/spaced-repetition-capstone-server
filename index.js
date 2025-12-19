@@ -94,11 +94,22 @@ app.use((err, req, res, next) => {
 function runServer(port = PORT) {
   const server = app
     .listen(port, () => {
-      console.info(`App listening on port ${server.address().port}`);
+      // Check if server successfully bound to port
+      const address = server.address();
+      if (address) {
+        console.info(`App listening on port ${address.port}`);
+      } else {
+        console.error('Server failed to bind to port');
+      }
     })
     .on('error', err => {
       console.error('Express failed to start');
-      console.error(err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use. Please stop the other process or use a different port.`);
+      } else {
+        console.error(err);
+      }
+      process.exit(1);
     });
 }
 

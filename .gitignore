@@ -108,3 +108,5 @@ tensorboard/
 *.ckpt
 *.index
 *.meta
+ml/tf-saved-model/
+ml/openvino-model/

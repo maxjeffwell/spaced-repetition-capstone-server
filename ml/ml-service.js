@@ -8,6 +8,7 @@
  */
 
 const IntervalPredictionModel = require('./model');
+const OpenVINOClient = require('./openvino-client');
 const path = require('path');
 
 class MLService {
@@ -15,6 +16,7 @@ class MLService {
     this.model = null;
     this.isReady = false;
     this.isLoading = false;
+    this.useOpenVino = process.env.USE_OPENVINO === 'true';
   }
 
   /**
@@ -34,7 +36,17 @@ class MLService {
     this.isLoading = true;
 
     try {
-      console.log('Loading ML model...');
+      if (this.useOpenVino) {
+        console.log('Loading OpenVINO Model Client...');
+        this.model = new OpenVINOClient();
+        await this.model.load();
+        this.isReady = true;
+        this.isLoading = false;
+        console.log('✓ OpenVINO Model Server client ready');
+        return;
+      }
+
+      console.log('Loading local ML model...');
       this.model = new IntervalPredictionModel();
 
       const fullPath = path.resolve(modelPath);

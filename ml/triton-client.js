@@ -10,7 +10,7 @@ const path = require('path');
 class TritonClient {
     constructor(config = {}) {
         this.baseUrl = config.baseUrl || process.env.TRITON_URL || 'http://triton-service:8000';
-        this.modelName = config.modelName || 'interval-model-tf';
+        this.modelName = config.modelName || 'interval_ai';
         this.isLoaded = false;
         
         this.featureStats = {
@@ -52,10 +52,6 @@ class TritonClient {
         if (!this.isLoaded) await this.load();
 
         // 51 features matching your advanced model
-        // We'll let the existing feature engineering logic handle this,
-        // this client just receives the final engineered features if needed,
-        // or we engineer them here.
-        
         // For simplicity in this demo, assuming questionFeatures is the array:
         const normalizedFeatures = this.normalize(questionFeatures);
 
@@ -64,7 +60,7 @@ class TritonClient {
             const response = await axios.post(`${this.baseUrl}/v2/models/${this.modelName}/versions/1/infer`, {
                 "inputs": [
                     {
-                        "name": "args_0", // This matches the export name we saw earlier
+                        "name": "dense_input", 
                         "shape": [1, 51],
                         "datatype": "FP32",
                         "data": normalizedFeatures

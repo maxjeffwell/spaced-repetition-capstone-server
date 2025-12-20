@@ -9,6 +9,7 @@
 
 const IntervalPredictionModel = require('./model');
 const OpenVINOClient = require('./openvino-client');
+const TritonClient = require('./triton-client');
 const path = require('path');
 
 class MLService {
@@ -17,6 +18,7 @@ class MLService {
     this.isReady = false;
     this.isLoading = false;
     this.useOpenVino = process.env.USE_OPENVINO === 'true';
+    this.useTriton = process.env.USE_TRITON === 'true';
   }
 
   /**
@@ -36,6 +38,16 @@ class MLService {
     this.isLoading = true;
 
     try {
+      if (this.useTriton) {
+        console.log('Loading Triton Model Client...');
+        this.model = new TritonClient();
+        await this.model.load();
+        this.isReady = true;
+        this.isLoading = false;
+        console.log('✓ Triton Inference Server client ready');
+        return;
+      }
+
       if (this.useOpenVino) {
         console.log('Loading OpenVINO Model Client...');
         this.model = new OpenVINOClient();

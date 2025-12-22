@@ -8,7 +8,11 @@ module.exports = {
   MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/spaced-repetition',
   TEST_DATABASE_URL: process.env.TEST_DATABASE_URL || 'mongodb://localhost/thinkful-backend-test',
   JWT_SECRET: process.env.JWT_SECRET || 'development-secret-do-not-use-in-production',
-  JWT_EXPIRY: process.env.JWT_EXPIRY || '7d'
+  JWT_EXPIRY: process.env.JWT_EXPIRY || '7d',
 
-
+  // AI Configuration
+  AI_PROVIDER: process.env.AI_PROVIDER || 'local', // 'local' or 'cloud'
+  AI_LOCAL_URL: process.env.AI_LOCAL_URL || 'http://localhost:8080/v1/chat/completions',
+  AI_CLOUD_URL: process.env.AI_CLOUD_URL || 'https://api.openai.com/v1/chat/completions',
+  AI_API_KEY: process.env.AI_API_KEY || ''
 };

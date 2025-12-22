@@ -40,6 +40,7 @@ FROM node:20-slim AS production
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV TFJS_FORCE_JS=true
 
 # Install build dependencies (often needed for tfjs-node even on CPU)
 RUN apt-get update && \

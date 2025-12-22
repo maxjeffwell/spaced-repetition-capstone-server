@@ -55,6 +55,7 @@ class MLService {
         this.isReady = true;
         this.isLoading = false;
         console.log('✓ OpenVINO Model Server client ready');
+        console.log('AI routes registered successfully');
         return;
       }
 

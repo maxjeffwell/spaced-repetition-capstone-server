@@ -4,7 +4,7 @@
 // util.isNullOrUndefined was removed in Node.js 18+
 const util = require('util');
 if (!util.isNullOrUndefined) {
-  util.isNullOrUndefined = function(value) {
+  util.isNullOrUndefined = function (value) {
     return value === null || value === undefined;
   };
 }
@@ -24,6 +24,7 @@ const mlService = require('./ml/ml-service');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 const questionsRouter = require('./routes/questions');
+const chatRouter = require('./routes/chat');
 
 const app = express();
 
@@ -65,26 +66,32 @@ app.get('/api/health', (req, res) => {
 app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', authRouter);
+app.use('/api/chat', chatRouter);
 
-// Serve static files from React build (production)
-const clientBuildPath = path.join(__dirname, '../spaced-repetition-capstone-client/build');
-app.use(express.static(clientBuildPath));
+// Conditionally serve static files only when not in API-only mode (for Kubernetes)
+if (process.env.API_ONLY !== 'true') {
+  // Serve static files from React build (production)
+  const clientBuildPath = path.join(__dirname, '../spaced-repetition-capstone-client/build');
+  app.use(express.static(clientBuildPath));
 
-// Serve ML model files
-const mlModelPath = path.join(__dirname, '../spaced-repetition-capstone-client/public/models');
-app.use('/models', express.static(mlModelPath));
+  // Serve ML model files
+  const mlModelPath = path.join(__dirname, '../spaced-repetition-capstone-client/public/models');
+  app.use('/models', express.static(mlModelPath));
 
-// Catch-all for client-side routing - serve index.html for non-API routes
-// This enables React Router to work when refreshing on routes like /learn
-app.use((req, res, next) => {
-  // Skip API routes
-  if (req.path.startsWith('/api')) {
-    return next();
-  }
+  // Catch-all for client-side routing - serve index.html for non-API routes
+  // This enables React Router to work when refreshing on routes like /learn
+  app.use((req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
 
-  // For all other routes, serve index.html to enable client-side routing
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+    // For all other routes, serve index.html to enable client-side routing
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+} else {
+  console.log('Running in API-only mode (Kubernetes deployment)');
+}
 
 app.use((err, req, res, next) => {
   console.error(err);

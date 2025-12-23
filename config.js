@@ -12,7 +12,7 @@ module.exports = {
 
   // AI Configuration
   AI_PROVIDER: process.env.AI_PROVIDER || 'local', // 'local' or 'cloud'
-  AI_LOCAL_URL: process.env.AI_LOCAL_URL || 'http://localhost:8080/v1/chat/completions',
+  AI_LOCAL_URL: process.env.AI_LOCAL_URL || 'http://llama-cpu-service:8080/v1/chat/completions',
   AI_CLOUD_URL: process.env.AI_CLOUD_URL || 'https://api.openai.com/v1/chat/completions',
   AI_API_KEY: process.env.AI_API_KEY || ''
 };

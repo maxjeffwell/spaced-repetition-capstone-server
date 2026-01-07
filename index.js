@@ -65,7 +65,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
-app.use('/api', authRouter);
+app.use(authRouter);
 app.use('/api/chat', chatRouter);
 
 // Conditionally serve static files only when not in API-only mode (for Kubernetes)

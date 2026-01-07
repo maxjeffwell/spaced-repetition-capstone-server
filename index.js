@@ -63,7 +63,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: Date.now() });
 });
 
-app.use('/api/questions', questionsRouter);
+app.use('/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 app.use(authRouter);
 app.use('/api/chat', chatRouter);

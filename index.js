@@ -63,7 +63,9 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: Date.now() });
 });
 
+// Mount questions router at both /questions and /api/questions for compatibility
 app.use('/questions', questionsRouter);
+app.use('/api/questions', questionsRouter);
 app.use('/api/users', usersRouter);
 // Mount auth router at both /api and root to support both /auth/login and /api/auth/login
 app.use('/api', authRouter);

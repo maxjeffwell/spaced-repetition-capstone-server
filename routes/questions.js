@@ -10,6 +10,9 @@ const mlService = require('../ml/ml-service');
 
 const router = express.Router();
 
+// Force server-side predictions (Triton/ML) instead of client WebGPU
+const forceServerPrediction = process.env.USE_SERVER_PREDICTION === 'true';
+
 // Protect all routes with JWT authentication
 const jwtAuth = passport.authenticate('jwt', { session: false });
 
@@ -125,9 +128,11 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       const correctAnswer = question.answer.trim().toLowerCase();
       const isCorrect = userAnswer === correctAnswer;
 
-      // Use client-predicted interval if provided, otherwise calculate server-side
+      // Use client-predicted interval if provided (and server prediction not forced), otherwise calculate server-side
       let result;
-      if (predictedInterval !== null && predictedInterval !== undefined) {
+      const useClientPrediction = !forceServerPrediction && predictedInterval !== null && predictedInterval !== undefined;
+
+      if (useClientPrediction) {
         console.log(`✅ Using client WebGPU prediction: ${predictedInterval} days (${predictionTime?.toFixed(2) || 'N/A'}ms)`);
 
         // Process answer with client-predicted interval
@@ -153,7 +158,7 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       // Skip validation since data is already validated by processAnswer
       return result.user.save({ validateBeforeSave: false })
         .then(updatedUser => {
-          res.json({
+          const response = {
             correct: isCorrect,
             correctAnswer: question.answer,
             feedback: result.feedback,
@@ -163,7 +168,9 @@ router.post('/answer', jwtAuth, (req, res, next) => {
               correctAnswers: updatedUser.stats?.correctAnswers || 0,
               currentStreak: updatedUser.stats?.currentStreak || 0
             }
-          });
+          };
+          console.log('📤 Answer response:', JSON.stringify(response, null, 2));
+          res.json(response);
         });
     })
     .catch(err => next(err));

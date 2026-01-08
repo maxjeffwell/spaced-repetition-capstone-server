@@ -11,8 +11,9 @@ module.exports = {
   JWT_EXPIRY: process.env.JWT_EXPIRY || '7d',
 
   // AI Configuration
-  AI_PROVIDER: process.env.AI_PROVIDER || 'local', // 'local' or 'cloud'
+  AI_PROVIDER: process.env.AI_PROVIDER || 'gateway', // 'local', 'cloud', or 'gateway'
   AI_LOCAL_URL: process.env.AI_LOCAL_URL || 'http://llama-cpu-service:8080/v1/chat/completions',
   AI_CLOUD_URL: process.env.AI_CLOUD_URL || 'https://api.openai.com/v1/chat/completions',
+  AI_GATEWAY_URL: process.env.AI_GATEWAY_URL || 'http://shared-ai-gateway:8002',
   AI_API_KEY: process.env.AI_API_KEY || ''
 };

@@ -14,7 +14,7 @@ const { createAdvancedFeatureVector, getFeatureArray } = require('./advanced-fea
 class TritonClient {
     constructor(config = {}) {
         // Tier 1: Local GPU via Cloudflare tunnel (Triton)
-        this.primaryUrl = config.primaryUrl || process.env.PRIMARY_TRITON_URL || 'https://intervalai-triton.el-jefe.me';
+        this.primaryUrl = config.primaryUrl || process.env.PRIMARY_TRITON_URL || 'https://triton-gpu.el-jefe.me';
 
         // Tier 2: RunPod vLLM (serverless)
         this.runpodUrl = config.runpodUrl || process.env.RUNPOD_URL || 'https://api.runpod.ai/v2/7a2s0z4p6x0i8n';

@@ -58,7 +58,10 @@ app.use(
 passport.use(jwtStrategy);
 passport.use(localStrategy);
 
-// Health check endpoint
+// Health check endpoint (both paths for proxy compatibility)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: Date.now() });
+});
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: Date.now() });
 });
@@ -66,10 +69,14 @@ app.get('/api/health', (req, res) => {
 // Mount questions router at both /questions and /api/questions for compatibility
 app.use('/questions', questionsRouter);
 app.use('/api/questions', questionsRouter);
+// Mount users router at both paths for proxy compatibility
+app.use('/users', usersRouter);
 app.use('/api/users', usersRouter);
 // Mount auth router at both /api and root to support both /auth/login and /api/auth/login
 app.use('/api', authRouter);
 app.use('/', authRouter);
+// Mount chat router at both paths for proxy compatibility
+app.use('/chat', chatRouter);
 app.use('/api/chat', chatRouter);
 
 // Conditionally serve static files only when not in API-only mode (for Kubernetes)

@@ -15,6 +15,7 @@ const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const passport = require('passport');
 const path = require('path');
+const client = require('prom-client');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
@@ -26,7 +27,40 @@ const authRouter = require('./routes/auth');
 const questionsRouter = require('./routes/questions');
 const chatRouter = require('./routes/chat');
 
+// Prometheus metrics setup
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status'],
+  registers: [register]
+});
+
+const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status'],
+  buckets: [0.001, 0.005, 0.015, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 5],
+  registers: [register]
+});
+
 const app = express();
+
+// Metrics middleware (before other middleware)
+app.use((req, res, next) => {
+  if (req.path === '/metrics' || req.path === '/health') return next();
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const duration = Number(process.hrtime.bigint() - start) / 1e9;
+    const route = req.route?.path || req.path || 'unknown';
+    const labels = { method: req.method, route, status: res.statusCode.toString() };
+    httpRequestsTotal.inc(labels);
+    httpRequestDuration.observe(labels, duration);
+  });
+  next();
+});
 
 app.use(
   morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev', {
@@ -64,6 +98,12 @@ app.get('/health', (req, res) => {
 });
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: Date.now() });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Mount questions router at both /questions and /api/questions for compatibility

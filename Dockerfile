@@ -21,8 +21,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies
-RUN npm install
+# Install all dependencies (BuildKit cache speeds up repeated builds)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copy application code
 COPY . .
@@ -54,14 +55,26 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production
+# Install production dependencies (BuildKit cache speeds up repeated builds)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production
 
 # Copy application code
 COPY . .
 
+# Create non-root user for security
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs nodejs && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
 # Expose port
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 # Start the application
 CMD ["node", "index.js"]

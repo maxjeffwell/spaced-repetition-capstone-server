@@ -51,6 +51,9 @@ const httpRequestDuration = new client.Histogram({
 
 const app = express();
 
+// Trust first proxy (Cloudflare/nginx/k8s ingress) for accurate client IP
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: {

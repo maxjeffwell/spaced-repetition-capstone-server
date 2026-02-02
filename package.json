@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "mocha": "mocha --exit --file test/setup.test.js '!(node_modules)/**/*test.js'",
-    "mocha-exit0": "mocha --exit --file test/setup.test.js '!(node_modules)/**/*test.js' || true",
+    "mocha": "NODE_ENV=test mocha --exit --file test/setup.test.js 'test/**/*.test.js'",
+    "mocha-exit0": "NODE_ENV=test mocha --exit --file test/setup.test.js 'test/**/*.test.js' || true",
     "test": "nodemon --exec npm run mocha-exit0",
-    "cover": "nodemon --exec nyc --reporter=lcov --reporter=text-summary npm run mocha-exit0",
+    "test:once": "NODE_ENV=test mocha --exit --file test/setup.test.js 'test/**/*.test.js'",
+    "cover": "NODE_ENV=test nyc --reporter=lcov --reporter=text-summary mocha --exit --file test/setup.test.js 'test/**/*.test.js'",
     "build": "node index.js",
     "travis": "npm run mocha"
   },

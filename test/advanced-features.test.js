@@ -155,19 +155,24 @@ describe('Advanced Feature Engineering', function() {
       expect(features.sqrtTotalReviews).to.be.approximately(Math.sqrt(8), 0.0001);
     });
 
-    it('should handle inverse features without division by zero', function() {
-      const features = calculatePolynomialFeatures(baseFeatures);
+    it('should handle negative values with sqrt safely', function() {
+      const negativeFeatures = { ...baseFeatures, memoryStrength: -1, timeSinceLastReview: -1 };
+      const features = calculatePolynomialFeatures(negativeFeatures);
 
-      expect(features.inverseMemoryStrength).to.be.approximately(1/3, 0.0001);
-      expect(features.inverseDifficulty).to.be.finite;
+      // Should use Math.max(value, 0) to avoid NaN from sqrt of negative
+      expect(features.sqrtMemoryStrength).to.equal(0);
+      expect(features.sqrtTime).to.equal(0);
+      expect(isNaN(features.sqrtMemoryStrength)).to.be.false;
     });
 
-    it('should handle zero memory strength safely', function() {
-      const zeroFeatures = { ...baseFeatures, memoryStrength: 0 };
+    it('should handle zero values safely', function() {
+      const zeroFeatures = { ...baseFeatures, memoryStrength: 0, timeSinceLastReview: 0, totalReviews: 0 };
       const features = calculatePolynomialFeatures(zeroFeatures);
 
-      expect(features.inverseMemoryStrength).to.equal(0);
-      expect(isNaN(features.inverseMemoryStrength)).to.be.false;
+      expect(features.sqrtMemoryStrength).to.equal(0);
+      expect(features.sqrtTime).to.equal(0);
+      expect(features.sqrtTotalReviews).to.equal(0);
+      expect(isNaN(features.memoryStrengthSquared)).to.be.false;
     });
   });
 
@@ -175,10 +180,10 @@ describe('Advanced Feature Engineering', function() {
     it('should encode time as sine and cosine', function() {
       const features = encodeCyclicalTime(0.5); // Noon
 
-      expect(features.timeOfDaySin).to.be.a('number');
-      expect(features.timeOfDayCos).to.be.a('number');
-      expect(features.timeOfDaySin).to.be.within(-1, 1);
-      expect(features.timeOfDayCos).to.be.within(-1, 1);
+      expect(features.timeSin).to.be.a('number');
+      expect(features.timeCos).to.be.a('number');
+      expect(features.timeSin).to.be.within(-1, 1);
+      expect(features.timeCos).to.be.within(-1, 1);
     });
 
     it('should make midnight and 11:59 PM similar', function() {
@@ -187,136 +192,137 @@ describe('Advanced Feature Engineering', function() {
 
       // Both should have similar sine/cosine values
       const distance = Math.sqrt(
-        Math.pow(midnight.timeOfDaySin - lateNight.timeOfDaySin, 2) +
-        Math.pow(midnight.timeOfDayCos - lateNight.timeOfDayCos, 2)
+        Math.pow(midnight.timeSin - lateNight.timeSin, 2) +
+        Math.pow(midnight.timeCos - lateNight.timeCos, 2)
       );
 
       expect(distance).to.be.lessThan(0.3); // Close together on circle
     });
 
-    it('should categorize time periods correctly', function() {
-      const morning = encodeCyclicalTime(0.375); // 9 AM
-      const afternoon = encodeCyclicalTime(0.625); // 3 PM
-      const evening = encodeCyclicalTime(0.875); // 9 PM
+    it('should include higher harmonics and phase', function() {
+      const features = encodeCyclicalTime(0.5); // Noon
 
-      expect(morning.isMorning).to.equal(1);
-      expect(morning.isAfternoon).to.equal(0);
-
-      expect(afternoon.isAfternoon).to.equal(1);
-      expect(afternoon.isMorning).to.equal(0);
-
-      expect(evening.isEvening).to.equal(1);
-      expect(evening.isAfternoon).to.equal(0);
+      expect(features.timeSin2).to.be.a('number');
+      expect(features.timeCos2).to.be.a('number');
+      expect(features.timePhase).to.be.a('number');
     });
   });
 
   describe('Moving Average Features', function() {
-    it('should calculate recent success rate', function() {
-      const features = calculateMovingAverageFeatures(reviewHistory);
+    it('should calculate moving average success rate', function() {
+      const features = calculateMovingAverageFeatures(baseFeatures);
 
-      expect(features.recentSuccessRate).to.be.at.least(0);
-      expect(features.recentSuccessRate).to.be.at.most(1);
+      expect(features.maSuccessRate).to.be.at.least(0);
+      expect(features.maSuccessRate).to.be.at.most(1);
     });
 
-    it('should calculate performance trends', function() {
-      const features = calculateMovingAverageFeatures(reviewHistory);
+    it('should calculate all moving average features', function() {
+      const features = calculateMovingAverageFeatures(baseFeatures);
 
-      expect(features.performanceTrend).to.be.a('number');
-      expect(features.difficultyTrend).to.be.a('number');
-      expect(features.velocityTrend).to.be.a('number');
+      expect(features.maDifficulty).to.be.a('number');
+      expect(features.maResponseTime).to.be.a('number');
+      expect(features.maInterval).to.be.a('number');
+      expect(features.reviewFrequency).to.be.a('number');
     });
 
-    it('should handle empty review history', function() {
-      const features = calculateMovingAverageFeatures(null);
+    it('should convert response time to seconds', function() {
+      const features = calculateMovingAverageFeatures(baseFeatures);
 
-      expect(features.recentSuccessRate).to.equal(0);
-      expect(features.recentAvgResponseTime).to.equal(0);
-      expect(features.performanceTrend).to.equal(0);
+      // baseFeatures.averageResponseTime is 3500ms, should be 3.5s
+      expect(features.maResponseTime).to.equal(3.5);
     });
 
-    it('should handle short review history', function() {
-      const shortHistory = reviewHistory.slice(0, 2);
-      const features = calculateMovingAverageFeatures(shortHistory);
+    it('should calculate review frequency', function() {
+      const features = calculateMovingAverageFeatures(baseFeatures);
 
-      expect(features.recentSuccessRate).to.be.a('number');
-      expect(features.recentAvgResponseTime).to.be.a('number');
+      // totalReviews / timeSinceLastReview = 8 / 2.5 = 3.2
+      expect(features.reviewFrequency).to.be.approximately(3.2, 0.01);
     });
   });
 
   describe('Momentum Features', function() {
-    const movingAvgFeatures = calculateMovingAverageFeatures(reviewHistory);
+    it('should calculate learning velocity', function() {
+      const features = calculateMomentumFeatures(baseFeatures);
 
-    it('should calculate learning momentum', function() {
-      const features = calculateMomentumFeatures(baseFeatures, movingAvgFeatures);
-
-      expect(features.learningMomentum).to.be.a('number');
-      expect(features.learningMomentum).to.be.within(-1, 1);
+      expect(features.learningVelocity).to.be.a('number');
+      // consecutiveCorrect / totalReviews = 3 / 8 = 0.375
+      expect(features.learningVelocity).to.be.approximately(0.375, 0.01);
     });
 
-    it('should calculate streak strength', function() {
-      const features = calculateMomentumFeatures(baseFeatures, movingAvgFeatures);
+    it('should calculate performance acceleration', function() {
+      const features = calculateMomentumFeatures(baseFeatures);
 
-      expect(features.streakStrength).to.be.at.least(0);
+      expect(features.performanceAcceleration).to.be.a('number');
+      // successRate - 0.5 = 0.75 - 0.5 = 0.25
+      expect(features.performanceAcceleration).to.be.approximately(0.25, 0.01);
     });
 
-    it('should calculate mastery level between 0 and 1', function() {
-      const features = calculateMomentumFeatures(baseFeatures, movingAvgFeatures);
+    it('should calculate mastery momentum', function() {
+      const features = calculateMomentumFeatures(baseFeatures);
 
-      expect(features.masteryLevel).to.be.at.least(0);
-      expect(features.masteryLevel).to.be.at.most(1);
+      expect(features.masteryMomentum).to.be.a('number');
+      // learningVelocity * memoryStrength = 0.375 * 3 = 1.125
+      expect(features.masteryMomentum).to.be.approximately(1.125, 0.01);
     });
 
-    it('should show higher mastery for consistent high performers', function() {
+    it('should show higher momentum for better performers', function() {
       const highPerformer = {
         ...baseFeatures,
         successRate: 0.95,
-        totalReviews: 20
+        consecutiveCorrect: 10,
+        totalReviews: 20,
+        memoryStrength: 10
       };
-      const movingAvg = { ...movingAvgFeatures, recentSuccessRate: 0.95 };
 
-      const features = calculateMomentumFeatures(highPerformer, movingAvg);
+      const features = calculateMomentumFeatures(highPerformer);
 
-      expect(features.masteryLevel).to.be.greaterThan(0.8);
+      // Higher consecutive correct and memory strength = higher momentum
+      expect(features.masteryMomentum).to.be.greaterThan(1);
     });
   });
 
   describe('Retention Prediction Features', function() {
     const forgettingCurveFeatures = calculateForgettingCurveFeatures(3, 2.5, 0.75);
 
-    it('should calculate stability', function() {
+    it('should calculate stability index', function() {
       const features = calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures);
 
-      expect(features.stability).to.be.at.least(0);
+      expect(features.stabilityIndex).to.be.at.least(0);
+      // memoryStrength / timeSinceLastReview = 3 / 2.5 = 1.2
+      expect(features.stabilityIndex).to.be.approximately(1.2, 0.01);
     });
 
-    it('should calculate retrievability between 0 and 1', function() {
+    it('should calculate predicted retention between 0 and 1', function() {
       const features = calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures);
 
-      expect(features.retrievability).to.be.at.least(0);
-      expect(features.retrievability).to.be.at.most(1);
+      expect(features.predictedRetention).to.be.at.least(0);
+      expect(features.predictedRetention).to.be.at.most(1);
     });
 
-    it('should calculate retention probability', function() {
+    it('should calculate confidence score', function() {
       const features = calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures);
 
-      expect(features.retentionProbability).to.be.at.least(0);
-      expect(features.retentionProbability).to.be.at.most(1);
+      expect(features.confidenceScore).to.be.a('number');
+      // successRate * (1 - difficultyRating) = 0.75 * (1 - 0.4) = 0.45
+      expect(features.confidenceScore).to.be.approximately(0.45, 0.01);
     });
 
     it('should provide optimal interval estimate', function() {
       const features = calculateRetentionFeatures(baseFeatures, forgettingCurveFeatures);
 
       expect(features.optimalIntervalEstimate).to.be.at.least(1);
+      // memoryStrength * (1 + successRate) = 3 * (1 + 0.75) = 5.25
+      expect(features.optimalIntervalEstimate).to.be.approximately(5.25, 0.01);
     });
 
-    it('should show higher stability for more experienced learners', function() {
-      const novice = { ...baseFeatures, consecutiveCorrect: 1, totalReviews: 2 };
-      const expert = { ...baseFeatures, consecutiveCorrect: 20, totalReviews: 50 };
+    it('should show higher stability for stronger memory', function() {
+      const weak = { ...baseFeatures, memoryStrength: 1 };
+      const strong = { ...baseFeatures, memoryStrength: 10 };
 
-      const noviceFeatures = calculateRetentionFeatures(novice, forgettingCurveFeatures);
-      const expertFeatures = calculateRetentionFeatures(expert, forgettingCurveFeatures);
+      const weakFeatures = calculateRetentionFeatures(weak, forgettingCurveFeatures);
+      const strongFeatures = calculateRetentionFeatures(strong, forgettingCurveFeatures);
 
-      expect(expertFeatures.stability).to.be.greaterThan(noviceFeatures.stability);
+      expect(strongFeatures.stabilityIndex).to.be.greaterThan(weakFeatures.stabilityIndex);
     });
   });
 
@@ -357,7 +363,8 @@ describe('Advanced Feature Engineering', function() {
       const features = createAdvancedFeatureVector(zeroSuccess, reviewHistory);
 
       expect(features.successRate).to.equal(0);
-      expect(features.learningMomentum).to.be.a('number');
+      expect(features.learningVelocity).to.be.a('number');
+      expect(features.masteryMomentum).to.be.a('number');
     });
 
     it('should handle perfect success rate', function() {
@@ -370,7 +377,7 @@ describe('Advanced Feature Engineering', function() {
       const features = createAdvancedFeatureVector(perfectSuccess, reviewHistory);
 
       expect(features.successRate).to.equal(1.0);
-      expect(features.masteryLevel).to.be.at.least(0.8);
+      expect(features.performanceAcceleration).to.equal(0.5); // 1.0 - 0.5 baseline
     });
 
     it('should handle missing review history', function() {

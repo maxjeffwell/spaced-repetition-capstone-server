@@ -97,12 +97,9 @@ const allowedOrigins = CLIENT_ORIGIN.split(',').map(origin => origin.trim());
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Security: In production, require Origin header to prevent CSRF-like attacks
+      // Allow requests without Origin header (same-origin, internal cluster, Prometheus)
+      // Browsers enforce Origin header on cross-origin requests, so CORS still protects
       if (!origin) {
-        if (NODE_ENV === 'production') {
-          return callback(new Error('Origin header required'), false);
-        }
-        // In development, allow for testing with curl/Postman
         return callback(null, true);
       }
 

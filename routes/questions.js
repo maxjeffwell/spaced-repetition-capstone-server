@@ -1,6 +1,5 @@
 'use strict';
 const express = require('express');
-const passport = require('passport');
 
 const User = require('../models/user');
 const { getNextQuestion } = require('../utils/question-helpers');
@@ -9,17 +8,15 @@ const mlService = require('../ml/ml-service');
 const logger = require('../utils/logger').child('Questions');
 const { validate } = require('../middleware/validation');
 const { NotFoundError } = require('../utils/errors');
+const { requireAuth } = require('../middleware/cookie-auth');
 
 const router = express.Router();
 
 // Force server-side predictions (Triton/ML) instead of client WebGPU
 const forceServerPrediction = process.env.USE_SERVER_PREDICTION === 'true';
 
-// Protect all routes with JWT authentication
-const jwtAuth = passport.authenticate('jwt', { session: false });
-
 /* ========== GET NEXT QUESTION ========== */
-router.get('/next', jwtAuth, async (req, res, next) => {
+router.get('/next', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -81,7 +78,7 @@ router.get('/next', jwtAuth, async (req, res, next) => {
 });
 
 /* ========== POST ANSWER ========== */
-router.post('/answer', jwtAuth, validate('answer'), async (req, res, next) => {
+router.post('/answer', requireAuth, validate('answer'), async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { answer, responseTime, predictedInterval, predictionTime } = req.body;
@@ -157,7 +154,7 @@ router.post('/answer', jwtAuth, validate('answer'), async (req, res, next) => {
 });
 
 /* ========== GET ALGORITHM COMPARISON STATS ========== */
-router.get('/stats/comparison', jwtAuth, async (req, res, next) => {
+router.get('/stats/comparison', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -180,7 +177,7 @@ router.get('/stats/comparison', jwtAuth, async (req, res, next) => {
 });
 
 /* ========== GET USER PROGRESS ========== */
-router.get('/progress', jwtAuth, async (req, res, next) => {
+router.get('/progress', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -226,7 +223,7 @@ router.get('/progress', jwtAuth, async (req, res, next) => {
 });
 
 /* ========== UPDATE USER SETTINGS ========== */
-router.patch('/settings', jwtAuth, async (req, res, next) => {
+router.patch('/settings', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { algorithmMode, dailyGoal } = req.body;

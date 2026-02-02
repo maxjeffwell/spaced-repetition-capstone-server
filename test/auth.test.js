@@ -3,17 +3,17 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 
 const { app } = require('../index');
 const User = require('../models/user');
+const RefreshToken = require('../models/refresh-token');
 const { JWT_SECRET } = require('../config');
 const { isDatabaseConnected, TEST_TIMEOUT } = require('./setup.test');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
 
-describe('Authentication API', function() {
+describe('Authentication API (Cookie-based)', function() {
   this.timeout(TEST_TIMEOUT);
 
   const testUser = {
@@ -23,38 +23,49 @@ describe('Authentication API', function() {
     password: 'testpassword123'
   };
 
-  let authToken;
+  let agent; // chai-http agent for cookie persistence
+  let testUserId;
 
   before(async function() {
     if (!isDatabaseConnected()) {
       this.skip();
     }
 
+    // Create agent for cookie persistence
+    agent = chai.request.agent(app);
+
     // Create a test user
     const hashedPassword = await User.hashPassword(testUser.password);
-    await User.create({
+    const user = await User.create({
       firstName: testUser.firstName,
       lastName: testUser.lastName,
       username: testUser.username,
       password: hashedPassword,
       questions: []
     });
+    testUserId = user._id;
   });
 
   after(async function() {
     if (isDatabaseConnected()) {
-      // Clean up test user
+      // Clean up test user and their refresh tokens
       await User.deleteOne({ username: testUser.username });
+      if (testUserId) {
+        await RefreshToken.deleteMany({ userId: testUserId });
+      }
+    }
+    if (agent) {
+      agent.close();
     }
   });
 
   describe('POST /auth/login', function() {
-    it('should return a JWT token for valid credentials', async function() {
+    it('should set httpOnly cookies for valid credentials', async function() {
       if (!isDatabaseConnected()) {
         this.skip();
       }
 
-      const res = await chai.request(app)
+      const res = await agent
         .post('/auth/login')
         .send({
           username: testUser.username,
@@ -62,15 +73,28 @@ describe('Authentication API', function() {
         });
 
       expect(res).to.have.status(200);
-      expect(res.body).to.have.property('authToken');
-      expect(res.body.authToken).to.be.a('string');
+      expect(res).to.have.cookie('accessToken');
+      expect(res).to.have.cookie('refreshToken');
+    });
 
-      // Verify the token is valid
-      const decoded = jwt.verify(res.body.authToken, JWT_SECRET);
-      expect(decoded.user).to.have.property('username', testUser.username);
+    it('should return user info in response body', async function() {
+      if (!isDatabaseConnected()) {
+        this.skip();
+      }
 
-      // Save token for later tests
-      authToken = res.body.authToken;
+      const res = await agent
+        .post('/auth/login')
+        .send({
+          username: testUser.username,
+          password: testUser.password
+        });
+
+      expect(res).to.have.status(200);
+      expect(res.body).to.have.property('user');
+      expect(res.body.user).to.have.property('id');
+      expect(res.body.user).to.have.property('username', testUser.username);
+      // Should NOT return authToken in body (stored in cookie only)
+      expect(res.body).to.not.have.property('authToken');
     });
 
     it('should reject invalid password', async function() {
@@ -112,53 +136,109 @@ describe('Authentication API', function() {
     });
   });
 
-  describe('POST /auth/refresh', function() {
-    it('should return a new token for valid JWT', async function() {
-      if (!isDatabaseConnected() || !authToken) {
+  describe('GET /auth/me', function() {
+    it('should return current user when authenticated', async function() {
+      if (!isDatabaseConnected()) {
         this.skip();
       }
 
-      const res = await chai.request(app)
-        .post('/auth/refresh')
-        .set('Authorization', `Bearer ${authToken}`);
+      // Login first to get cookies
+      await agent
+        .post('/auth/login')
+        .send({
+          username: testUser.username,
+          password: testUser.password
+        });
+
+      const res = await agent.get('/auth/me');
 
       expect(res).to.have.status(200);
-      expect(res.body).to.have.property('authToken');
-      expect(res.body.authToken).to.be.a('string');
-
-      // Verify the new token
-      const decoded = jwt.verify(res.body.authToken, JWT_SECRET);
-      expect(decoded.user).to.have.property('username', testUser.username);
+      expect(res.body).to.have.property('user');
+      expect(res.body.user).to.have.property('username', testUser.username);
+      expect(res.body.user).to.have.property('firstName', testUser.firstName);
+      expect(res.body.user).to.have.property('lastName', testUser.lastName);
     });
 
-    it('should reject invalid JWT', async function() {
-      const res = await chai.request(app)
-        .post('/auth/refresh')
-        .set('Authorization', 'Bearer invalid.token.here');
-
+    it('should return 401 without valid cookie', async function() {
+      // Use fresh request without agent (no cookies)
+      const res = await chai.request(app).get('/auth/me');
       expect(res).to.have.status(401);
     });
+  });
 
-    it('should reject missing Authorization header', async function() {
-      const res = await chai.request(app)
-        .post('/auth/refresh');
+  describe('POST /auth/refresh', function() {
+    it('should refresh access token using refresh cookie', async function() {
+      if (!isDatabaseConnected()) {
+        this.skip();
+      }
 
-      expect(res).to.have.status(401);
+      // Login first
+      await agent
+        .post('/auth/login')
+        .send({
+          username: testUser.username,
+          password: testUser.password
+        });
+
+      const res = await agent.post('/auth/refresh');
+
+      expect(res).to.have.status(200);
+      expect(res.body).to.have.property('success', true);
+      // Should set a new accessToken cookie
+      expect(res).to.have.cookie('accessToken');
     });
 
-    it('should reject expired JWT', async function() {
-      // Create an expired token
-      const expiredToken = jwt.sign(
-        { user: { id: 'someid', username: testUser.username } },
-        JWT_SECRET,
-        { expiresIn: '-1h' } // Already expired
-      );
-
-      const res = await chai.request(app)
-        .post('/auth/refresh')
-        .set('Authorization', `Bearer ${expiredToken}`);
+    it('should reject without refresh cookie', async function() {
+      // Use fresh request without agent (no cookies)
+      const res = await chai.request(app).post('/auth/refresh');
 
       expect(res).to.have.status(401);
+      expect(res.body).to.have.property('error', 'Refresh token required');
+    });
+  });
+
+  describe('POST /auth/logout', function() {
+    it('should clear cookies and revoke refresh tokens', async function() {
+      if (!isDatabaseConnected()) {
+        this.skip();
+      }
+
+      // Login first
+      await agent
+        .post('/auth/login')
+        .send({
+          username: testUser.username,
+          password: testUser.password
+        });
+
+      const res = await agent.post('/auth/logout');
+
+      expect(res).to.have.status(200);
+      expect(res.body).to.have.property('success', true);
+    });
+
+    it('should invalidate session after logout', async function() {
+      if (!isDatabaseConnected()) {
+        this.skip();
+      }
+
+      // Login first
+      await agent
+        .post('/auth/login')
+        .send({
+          username: testUser.username,
+          password: testUser.password
+        });
+
+      // Logout
+      await agent.post('/auth/logout');
+
+      // Try to access protected route - should fail
+      // Note: agent still has the cookie, but server revoked the refresh token
+      const meRes = await agent.get('/auth/me');
+      // Access token may still be valid briefly, but refresh should fail
+      // This tests the cookie clearing aspect
+      expect(meRes).to.have.status(401);
     });
   });
 });

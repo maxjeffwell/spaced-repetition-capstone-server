@@ -3,11 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const chatService = require('../ml/chat-service');
-const passport = require('passport');
 const { BadRequestError } = require('../utils/errors');
+const { requireAuth } = require('../middleware/cookie-auth');
 
-// Protect all routes with JWT strategy
-router.use('/', passport.authenticate('jwt', { session: false, failWithError: true }));
+// Protect all routes with cookie-based authentication
+router.use('/', requireAuth);
 
 // POST /chat - General chat with AI
 router.post('/', async (req, res, next) => {

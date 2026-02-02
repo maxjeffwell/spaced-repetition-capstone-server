@@ -13,6 +13,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const passport = require('passport');
 const path = require('path');
 const client = require('prom-client');
@@ -93,6 +94,7 @@ app.use(
 );
 
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 // CORS configuration - supports multiple origins for production
 const allowedOrigins = CLIENT_ORIGIN.split(',').map(origin => origin.trim());

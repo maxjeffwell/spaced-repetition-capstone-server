@@ -4,6 +4,7 @@ const express = require('express');
 
 const User = require('../models/user');
 const createQuestions = require('../db/seed/questions');
+const logger = require('../utils/logger').child('Users');
 
 const router = express.Router();
 
@@ -97,7 +98,7 @@ router.post('/', (req, res, next) => {
       return User.create(newUser);
     })
     .then(result => {
-      console.log(result);
+      logger.info('User created', { userId: result.id, username: result.username });
       return res.status(201).location(`/api/users/${result.id}`).json(result);
     })
     .catch(err => {

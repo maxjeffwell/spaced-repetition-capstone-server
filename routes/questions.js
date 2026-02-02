@@ -7,6 +7,7 @@ const User = require('../models/user');
 const { getNextQuestion } = require('../utils/question-helpers');
 const { processAnswer, getAlgorithmComparison, checkMLReadiness } = require('../algorithms/algorithm-manager');
 const mlService = require('../ml/ml-service');
+const logger = require('../utils/logger').child('Questions');
 
 const router = express.Router();
 
@@ -133,7 +134,10 @@ router.post('/answer', jwtAuth, (req, res, next) => {
       const useClientPrediction = !forceServerPrediction && predictedInterval !== null && predictedInterval !== undefined;
 
       if (useClientPrediction) {
-        console.log(`✅ Using client WebGPU prediction: ${predictedInterval} days (${predictionTime?.toFixed(2) || 'N/A'}ms)`);
+        logger.debug('Using client WebGPU prediction', {
+          predictedInterval,
+          predictionTimeMs: predictionTime?.toFixed(2)
+        });
 
         // Process answer with client-predicted interval
         result = await processAnswer(
@@ -145,7 +149,7 @@ router.post('/answer', jwtAuth, (req, res, next) => {
           predictedInterval // Use client prediction
         );
       } else {
-        console.log('⚠️  No client prediction, using server-side ML/baseline');
+        logger.debug('No client prediction, using server-side ML/baseline');
 
         // Get ML model if available
         const mlModel = mlService.getModel();
@@ -169,7 +173,7 @@ router.post('/answer', jwtAuth, (req, res, next) => {
               currentStreak: updatedUser.stats?.currentStreak || 0
             }
           };
-          console.log('📤 Answer response:', JSON.stringify(response, null, 2));
+          logger.debug('Answer processed', { correct: isCorrect, totalReviews: response.stats.totalReviews });
           res.json(response);
         });
     })

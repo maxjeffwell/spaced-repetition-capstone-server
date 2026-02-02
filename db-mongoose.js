@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 
 const { MONGODB_URI } = require('./config');
+const logger = require('./utils/logger').child('Database');
 
 // Connection options optimized for Mongoose 8.x and MongoDB Atlas
 const mongooseOptions = {
@@ -20,21 +21,20 @@ const mongooseOptions = {
 async function dbConnect(url = MONGODB_URI, retries = 5, delay = 5000) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`Attempting MongoDB connection (attempt ${attempt}/${retries})...`);
+      logger.info('Attempting MongoDB connection', { attempt, maxRetries: retries });
       await mongoose.connect(url, mongooseOptions);
-      console.log('✓ MongoDB connected successfully');
+      logger.info('MongoDB connected successfully');
       return;
     } catch (err) {
-      console.error(`MongoDB connection attempt ${attempt} failed:`, err.message);
+      logger.error('MongoDB connection attempt failed', { attempt, error: err.message });
 
       if (attempt < retries) {
-        console.log(`Retrying in ${delay / 1000} seconds...`);
+        logger.info('Retrying connection', { delaySeconds: delay / 1000 });
         await new Promise(resolve => setTimeout(resolve, delay));
         // Exponential backoff: increase delay for next attempt
         delay = Math.min(delay * 1.5, 30000);
       } else {
-        console.error('All MongoDB connection attempts failed');
-        console.error(err);
+        logger.error('All MongoDB connection attempts failed', { error: err.message });
         // Don't throw - let the app start but log the error
         // This allows the app to be healthy for k8s probes
       }

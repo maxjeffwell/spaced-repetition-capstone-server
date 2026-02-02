@@ -17,8 +17,10 @@ const passport = require('passport');
 const path = require('path');
 const client = require('prom-client');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 const { PORT, CLIENT_ORIGIN, NODE_ENV } = require('./config');
+const logger = require('./utils/logger');
 const { dbConnect } = require('./db-mongoose');
 const { localStrategy, jwtStrategy } = require('./auth/passport');
 const mlService = require('./ml/ml-service');
@@ -48,6 +50,24 @@ const httpRequestDuration = new client.Histogram({
 });
 
 const app = express();
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // TensorFlow.js needs eval
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false // Required for TensorFlow.js
+}));
 
 // Metrics middleware (before other middleware)
 app.use((req, res, next) => {
@@ -178,11 +198,16 @@ if (process.env.API_ONLY !== 'true') {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 } else {
-  console.log('Running in API-only mode (Kubernetes deployment)');
+  logger.info('Running in API-only mode (Kubernetes deployment)');
 }
 
 app.use((err, req, res, next) => {
-  console.error(err);
+  logger.error('Request error', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   if (err.status) {
     const errBody = Object.assign({}, err, { message: err.message });
     res.status(err.status).json(errBody);
@@ -197,17 +222,15 @@ function runServer(port = PORT) {
       // Check if server successfully bound to port
       const address = server.address();
       if (address) {
-        console.info(`App listening on port ${address.port}`);
+        logger.info(`Server started`, { port: address.port, env: NODE_ENV });
       } else {
-        console.error('Server failed to bind to port');
+        logger.error('Server failed to bind to port');
       }
     })
     .on('error', err => {
-      console.error('Express failed to start');
+      logger.error('Express failed to start', { error: err.message });
       if (err.code === 'EADDRINUSE') {
-        console.error(`Port ${port} is already in use. Please stop the other process or use a different port.`);
-      } else {
-        console.error(err);
+        logger.error(`Port ${port} is already in use`);
       }
       process.exit(1);
     });
@@ -219,7 +242,7 @@ if (require.main === module) {
 
   // Initialize ML model asynchronously (non-blocking)
   mlService.initialize().catch(err => {
-    console.error('Failed to initialize ML service:', err.message);
+    logger.error('Failed to initialize ML service', { error: err.message });
   });
 }
 

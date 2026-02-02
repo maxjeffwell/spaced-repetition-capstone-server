@@ -11,6 +11,7 @@ const IntervalPredictionModel = require('./model');
 const OpenVINOClient = require('./openvino-client');
 const TritonClient = require('./triton-client');
 const path = require('path');
+const logger = require('../utils/logger').child('MLService');
 
 class MLService {
   constructor() {
@@ -26,12 +27,12 @@ class MLService {
    */
   async initialize(modelPath = 'ml/saved-model') {
     if (this.isReady) {
-      console.log('✓ ML model already loaded');
+      logger.debug('ML model already loaded');
       return;
     }
 
     if (this.isLoading) {
-      console.log('⏳ ML model is already loading...');
+      logger.debug('ML model is already loading');
       return;
     }
 
@@ -39,27 +40,26 @@ class MLService {
 
     try {
       if (this.useTriton) {
-        console.log('Loading Triton Model Client...');
+        logger.info('Loading Triton Model Client');
         this.model = new TritonClient();
         await this.model.load();
         this.isReady = true;
         this.isLoading = false;
-        console.log('✓ Triton Inference Server client ready');
+        logger.info('Triton Inference Server client ready');
         return;
       }
 
       if (this.useOpenVino) {
-        console.log('Loading OpenVINO Model Client...');
+        logger.info('Loading OpenVINO Model Client');
         this.model = new OpenVINOClient();
         await this.model.load();
         this.isReady = true;
         this.isLoading = false;
-        console.log('✓ OpenVINO Model Server client ready');
-        console.log('AI routes registered successfully');
+        logger.info('OpenVINO Model Server client ready');
         return;
       }
 
-      console.log('Loading local ML model...');
+      logger.info('Loading local ML model', { modelPath });
       this.model = new IntervalPredictionModel();
 
       const fullPath = path.resolve(modelPath);
@@ -67,8 +67,9 @@ class MLService {
 
       // Check if model exists
       if (!fs.existsSync(path.join(fullPath, 'model.json'))) {
-        console.log('⚠️  ML model not found. Using baseline algorithm only.');
-        console.log('   Train a model with: node scripts/train-model.js');
+        logger.warn('ML model not found, using baseline algorithm only', {
+          hint: 'Train a model with: node scripts/train-model.js'
+        });
         this.isLoading = false;
         return;
       }
@@ -77,11 +78,10 @@ class MLService {
       this.isReady = true;
       this.isLoading = false;
 
-      console.log('✓ ML model loaded and ready for predictions');
+      logger.info('ML model loaded and ready for predictions');
 
     } catch (error) {
-      console.error('❌ Failed to load ML model:', error.message);
-      console.log('   Falling back to baseline algorithm');
+      logger.error('Failed to load ML model, falling back to baseline', { error: error.message });
       this.model = null;
       this.isReady = false;
       this.isLoading = false;

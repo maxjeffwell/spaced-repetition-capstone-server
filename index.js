@@ -150,11 +150,53 @@ passport.use(jwtStrategy);
 passport.use(localStrategy);
 
 // Health check endpoint (both paths for proxy compatibility)
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: Date.now() });
+// Returns detailed service status including ML and database readiness
+const mongoose = require('mongoose');
+
+const healthCheck = (req, res) => {
+  const mlStatus = mlService.getStatus();
+  const dbStatus = mongoose.connection.readyState;
+  const dbStates = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    services: {
+      database: {
+        status: dbStatus === 1 ? 'healthy' : 'unhealthy',
+        state: dbStates[dbStatus] || 'unknown'
+      },
+      mlModel: {
+        status: mlStatus.isReady ? 'ready' : 'unavailable',
+        loading: mlStatus.isLoading,
+        loaded: mlStatus.modelLoaded
+      }
+    },
+    environment: NODE_ENV
+  };
+
+  // Return 503 if critical services are down
+  const httpStatus = dbStatus === 1 ? 200 : 503;
+  res.status(httpStatus).json(health);
+};
+
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
+
+// Kubernetes readiness probe - only ready when DB is connected
+app.get('/ready', (req, res) => {
+  const dbReady = mongoose.connection.readyState === 1;
+  if (dbReady) {
+    res.status(200).json({ ready: true });
+  } else {
+    res.status(503).json({ ready: false, reason: 'Database not connected' });
+  }
 });
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: Date.now() });
+
+// Kubernetes liveness probe - basic check that server is running
+app.get('/live', (req, res) => {
+  res.status(200).json({ alive: true });
 });
 
 // Prometheus metrics endpoint

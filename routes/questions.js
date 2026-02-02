@@ -8,6 +8,7 @@ const { getNextQuestion } = require('../utils/question-helpers');
 const { processAnswer, getAlgorithmComparison, checkMLReadiness } = require('../algorithms/algorithm-manager');
 const mlService = require('../ml/ml-service');
 const logger = require('../utils/logger').child('Questions');
+const { validate } = require('../middleware/validation');
 
 const router = express.Router();
 
@@ -81,31 +82,9 @@ router.get('/next', jwtAuth, (req, res, next) => {
 });
 
 /* ========== POST ANSWER ========== */
-router.post('/answer', jwtAuth, (req, res, next) => {
+router.post('/answer', jwtAuth, validate('answer'), (req, res, next) => {
   const userId = req.user.id;
   const { answer, responseTime, predictedInterval, predictionTime } = req.body;
-
-  /***** Validate input *****/
-  if (!answer) {
-    const err = new Error('Missing answer in request body');
-    err.status = 400;
-    return next(err);
-  }
-
-  if (typeof responseTime !== 'number' || responseTime < 0) {
-    const err = new Error('Invalid responseTime');
-    err.status = 400;
-    return next(err);
-  }
-
-  // Validate client-predicted interval if provided
-  if (predictedInterval !== null && predictedInterval !== undefined) {
-    if (typeof predictedInterval !== 'number' || predictedInterval < 1 || predictedInterval > 365) {
-      const err = new Error('Invalid predicted interval (must be 1-365 days)');
-      err.status = 400;
-      return next(err);
-    }
-  }
 
   User.findById(userId)
     .then(async user => {

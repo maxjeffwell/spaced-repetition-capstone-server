@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const chatService = require('../ml/chat-service');
 const passport = require('passport');
+const { BadRequestError } = require('../utils/errors');
 
 // Protect all routes with JWT strategy
 router.use('/', passport.authenticate('jwt', { session: false, failWithError: true }));
@@ -14,9 +15,7 @@ router.post('/', async (req, res, next) => {
         const { messages } = req.body;
 
         if (!messages || !Array.isArray(messages)) {
-            const err = new Error('Missing or invalid "messages" array in request body');
-            err.status = 400;
-            return next(err);
+            throw new BadRequestError('Missing or invalid "messages" array in request body');
         }
 
         const aiResponse = await chatService.generateResponse(messages);
@@ -32,9 +31,7 @@ router.post('/questions', async (req, res, next) => {
         const { content, count } = req.body;
 
         if (!content || typeof content !== 'string') {
-            const err = new Error('Missing or invalid "content" string in request body');
-            err.status = 400;
-            return next(err);
+            throw new BadRequestError('Missing or invalid "content" string in request body');
         }
 
         const questions = await chatService.generateQuestions(content, count || 5);
@@ -50,9 +47,7 @@ router.post('/hint', async (req, res, next) => {
         const { question, answer } = req.body;
 
         if (!question || !answer) {
-            const err = new Error('Missing "question" or "answer" in request body');
-            err.status = 400;
-            return next(err);
+            throw new BadRequestError('Missing "question" or "answer" in request body');
         }
 
         const hint = await chatService.generateHint(question, answer);

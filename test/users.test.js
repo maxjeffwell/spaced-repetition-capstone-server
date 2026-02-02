@@ -84,7 +84,7 @@ describe('Users API', function() {
         .post('/users')
         .send(duplicateUser);
 
-      expect(res).to.have.status(400);
+      expect(res).to.have.status(409);
       expect(res.body.message).to.include('already exists');
     });
 

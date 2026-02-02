@@ -46,7 +46,7 @@ const localStrategy = new LocalStrategy((username, password, done) => {
     .then(isValid => {
       if (!isValid) {
         return Promise.reject({
-          reason: 'Log in error',
+          reason: 'LoginError',
           message: 'Invalid password',
           location: 'password'
         });

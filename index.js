@@ -116,35 +116,37 @@ app.use(
   })
 );
 
-// Rate limiting - protect against brute force attacks
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per windowMs per IP
-  message: { message: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Rate limiting - protect against brute force attacks (disabled in test mode)
+if (NODE_ENV !== 'test') {
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per windowMs per IP
+    message: { message: 'Too many requests, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false
+  });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 failed attempts per 15 minutes
-  skipSuccessfulRequests: true, // Only count failed requests
-  message: { message: 'Too many login attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 failed attempts per 15 minutes
+    skipSuccessfulRequests: true, // Only count failed requests
+    message: { message: 'Too many login attempts, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false
+  });
 
-// Apply general rate limiting to all API routes
-app.use('/api', generalLimiter);
-app.use('/auth', generalLimiter);
-app.use('/questions', generalLimiter);
-app.use('/users', generalLimiter);
+  // Apply general rate limiting to all API routes
+  app.use('/api', generalLimiter);
+  app.use('/auth', generalLimiter);
+  app.use('/questions', generalLimiter);
+  app.use('/users', generalLimiter);
 
-// Apply strict rate limiting to authentication endpoints
-app.use('/api/auth/login', authLimiter);
-app.use('/auth/login', authLimiter);
-app.use('/api/auth/refresh', authLimiter);
-app.use('/auth/refresh', authLimiter);
+  // Apply strict rate limiting to authentication endpoints
+  app.use('/api/auth/login', authLimiter);
+  app.use('/auth/login', authLimiter);
+  app.use('/api/auth/refresh', authLimiter);
+  app.use('/auth/refresh', authLimiter);
+}
 
 passport.use(jwtStrategy);
 passport.use(localStrategy);
@@ -244,18 +246,40 @@ if (process.env.API_ONLY !== 'true') {
 }
 
 app.use((err, req, res, next) => {
-  logger.error('Request error', {
+  // Log error details (stack trace only in development)
+  const logData = {
     error: err.message,
-    stack: err.stack,
+    status: err.status || 500,
     path: req.path,
     method: req.method
-  });
-  if (err.status) {
-    const errBody = Object.assign({}, err, { message: err.message });
-    res.status(err.status).json(errBody);
-  } else {
-    res.status(500).json({ message: 'Internal Server Error' });
+  };
+  if (NODE_ENV !== 'production') {
+    logData.stack = err.stack;
   }
+  logger.error('Request error', logData);
+
+  // Handle custom AppError instances
+  if (err.status) {
+    const response = { message: err.message };
+    // Include validation errors if present
+    if (err.errors) {
+      response.errors = err.errors;
+    }
+    return res.status(err.status).json(response);
+  }
+
+  // Handle Mongoose validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(422).json({ message: err.message });
+  }
+
+  // Handle Mongoose cast errors (invalid ObjectId)
+  if (err.name === 'CastError') {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+
+  // Default to 500 for unhandled errors
+  res.status(500).json({ message: 'Internal Server Error' });
 });
 
 function runServer(port = PORT) {

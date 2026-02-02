@@ -187,7 +187,7 @@ describe('Questions API', function() {
           responseTime: 2000
         });
 
-      expect(res).to.have.status(400);
+      expect(res).to.have.status(422);
     });
 
     it('should reject invalid responseTime', async function() {
@@ -203,7 +203,7 @@ describe('Questions API', function() {
           responseTime: -100
         });
 
-      expect(res).to.have.status(400);
+      expect(res).to.have.status(422);
     });
 
     it('should accept client-predicted interval', async function() {
@@ -248,11 +248,21 @@ describe('Questions API', function() {
         this.skip();
       }
 
+      // Get the current question to find its answer
+      const questionRes = await chai.request(app)
+        .get('/questions/next')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      // Get the correct answer from the user's questions
+      const user = await User.findOne({ username: testUser.username });
+      const currentAnswer = user.questions[user.head].answer;
+
+      // Submit the answer in UPPERCASE to test case-insensitivity
       const res = await chai.request(app)
         .post('/questions/answer')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          answer: 'HELLO',
+          answer: currentAnswer.toUpperCase(),
           responseTime: 2000
         });
 
@@ -272,9 +282,9 @@ describe('Questions API', function() {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res).to.have.status(200);
-      expect(res.body).to.have.property('baseline');
-      expect(res.body).to.have.property('ml');
-      expect(res.body).to.have.property('improvement');
+      expect(res.body).to.have.property('comparison');
+      expect(res.body).to.have.property('mlReadiness');
+      expect(res.body).to.have.property('currentMode');
     });
 
     it('should require authentication', async function() {

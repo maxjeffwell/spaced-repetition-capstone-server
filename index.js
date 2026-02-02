@@ -16,8 +16,9 @@ const bodyParser = require('body-parser');
 const passport = require('passport');
 const path = require('path');
 const client = require('prom-client');
+const rateLimit = require('express-rate-limit');
 
-const { PORT, CLIENT_ORIGIN } = require('./config');
+const { PORT, CLIENT_ORIGIN, NODE_ENV } = require('./config');
 const { dbConnect } = require('./db-mongoose');
 const { localStrategy, jwtStrategy } = require('./auth/passport');
 const mlService = require('./ml/ml-service');
@@ -76,10 +77,16 @@ const allowedOrigins = CLIENT_ORIGIN.split(',').map(origin => origin.trim());
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      // Security: In production, require Origin header to prevent CSRF-like attacks
+      if (!origin) {
+        if (NODE_ENV === 'production') {
+          return callback(new Error('Origin header required'), false);
+        }
+        // In development, allow for testing with curl/Postman
+        return callback(null, true);
+      }
 
-      if (allowedOrigins.indexOf(origin) === -1) {
+      if (!allowedOrigins.includes(origin)) {
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
       }
@@ -88,6 +95,36 @@ app.use(
     credentials: true
   })
 );
+
+// Rate limiting - protect against brute force attacks
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per windowMs per IP
+  message: { message: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 failed attempts per 15 minutes
+  skipSuccessfulRequests: true, // Only count failed requests
+  message: { message: 'Too many login attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Apply general rate limiting to all API routes
+app.use('/api', generalLimiter);
+app.use('/auth', generalLimiter);
+app.use('/questions', generalLimiter);
+app.use('/users', generalLimiter);
+
+// Apply strict rate limiting to authentication endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/auth/login', authLimiter);
+app.use('/api/auth/refresh', authLimiter);
+app.use('/auth/refresh', authLimiter);
 
 passport.use(jwtStrategy);
 passport.use(localStrategy);

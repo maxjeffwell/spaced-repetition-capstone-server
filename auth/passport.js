@@ -12,8 +12,21 @@ const options = {
   algorithms: ['HS256']
 };
 
-const jwtStrategy = new JwtStrategy(options, (payload, done) => {
-  done(null, payload.user);
+const jwtStrategy = new JwtStrategy(options, async (payload, done) => {
+  try {
+    // Security: Verify user still exists and hasn't been deleted/banned
+    // This prevents deleted users from accessing the system until token expires
+    const user = await User.findById(payload.user.id).select('_id username');
+
+    if (!user) {
+      return done(null, false, { message: 'User no longer exists' });
+    }
+
+    // Return the verified user from database (not just the payload)
+    done(null, { id: user._id, username: user.username });
+  } catch (err) {
+    done(err);
+  }
 });
 
 const localStrategy = new LocalStrategy((username, password, done) => {

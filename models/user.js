@@ -199,6 +199,12 @@ userSchema.set('toObject', {
   }
 });
 
+// Database indexes for query performance optimization
+// Note: username already has unique index from schema definition
+userSchema.index({ 'stats.lastStudyDate': -1 }); // For active user queries (descending for recent first)
+userSchema.index({ 'settings.algorithmMode': 1 }); // For A/B test analytics
+userSchema.index({ 'stats.totalReviews': -1 }); // For leaderboard queries (descending)
+
 userSchema.methods.validatePassword = function (pwd) {
   const currentUser = this;
   return bcrypt.compare(pwd, currentUser.password);

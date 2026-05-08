@@ -20,7 +20,7 @@
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-node": "^4.22.0",
     "@tensorflow/tfjs-node-gpu": "^4.22.0",
-    "axios": "^1.13.2",
+    "axios": "^1.15.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.18.3",
     "cookie-parser": "^1.4.7",

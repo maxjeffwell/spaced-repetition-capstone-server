@@ -54,17 +54,23 @@ class EmbeddingClient {
   async embed(text) {
     const tokenizer = await this._getTokenizer();
     const enc = await tokenizer(text, { add_special_tokens: true });
-    // enc.input_ids / enc.attention_mask are Tensors; flatten to plain arrays.
+    // enc.* are Tensors; flatten to plain arrays. The BERT IR requires three
+    // inputs: input_ids, attention_mask, AND token_type_ids (all zeros for a
+    // single sentence — the tokenizer provides them when available).
     const ids = Array.from(enc.input_ids.data, Number);
     const mask = Array.from(enc.attention_mask.data, Number);
     const seqLen = ids.length;
+    const typeIds = enc.token_type_ids
+      ? Array.from(enc.token_type_ids.data, Number)
+      : new Array(seqLen).fill(0);
 
     const resp = await axios.post(
       `${this.baseUrl}/v2/models/${this.modelName}/infer`,
       {
         inputs: [
           { name: 'input_ids', shape: [1, seqLen], datatype: 'INT64', data: ids },
-          { name: 'attention_mask', shape: [1, seqLen], datatype: 'INT64', data: mask }
+          { name: 'attention_mask', shape: [1, seqLen], datatype: 'INT64', data: mask },
+          { name: 'token_type_ids', shape: [1, seqLen], datatype: 'INT64', data: typeIds }
         ]
       },
       { timeout: 10000 }

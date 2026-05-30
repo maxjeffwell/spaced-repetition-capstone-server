@@ -2,11 +2,10 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const jwt = require('jsonwebtoken');
 
 const { app } = require('../index');
 const User = require('../models/user');
-const { JWT_SECRET } = require('../config');
+const { generateAccessToken } = require('../lib/auth/jwt');
 const { isDatabaseConnected, TEST_TIMEOUT } = require('./setup.test');
 
 const expect = chai.expect;
@@ -70,12 +69,8 @@ describe('Questions API', function() {
 
     testUserId = user._id;
 
-    // Create auth token
-    authToken = jwt.sign(
-      { user: { id: user._id, username: user.username } },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Create auth token (cookie-based; correct issuer/audience claims)
+    authToken = generateAccessToken(user);
   });
 
   after(async function() {
@@ -92,7 +87,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .get('/questions/next')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Cookie', `accessToken=${authToken}`);
 
       expect(res).to.have.status(200);
       expect(res.body).to.have.property('question');
@@ -110,7 +105,7 @@ describe('Questions API', function() {
     it('should reject invalid token', async function() {
       const res = await chai.request(app)
         .get('/questions/next')
-        .set('Authorization', 'Bearer invalid.token.here');
+        .set('Cookie', 'accessToken=invalid.token.here');
 
       expect(res).to.have.status(401);
     });
@@ -122,7 +117,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .get('/questions/next')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Cookie', `accessToken=${authToken}`);
 
       expect(res).to.have.status(200);
       expect(res.body).to.have.property('questionFeatures');
@@ -139,7 +134,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: 'Hello',
           responseTime: 2500
@@ -160,11 +155,11 @@ describe('Questions API', function() {
       // First get the current question
       await chai.request(app)
         .get('/questions/next')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Cookie', `accessToken=${authToken}`);
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: 'Wrong answer',
           responseTime: 3000
@@ -182,7 +177,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           responseTime: 2000
         });
@@ -197,7 +192,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: 'Hello',
           responseTime: -100
@@ -213,7 +208,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: 'Hello',
           responseTime: 2000,
@@ -232,7 +227,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: 'Hello',
           responseTime: 2000
@@ -251,7 +246,7 @@ describe('Questions API', function() {
       // Get the current question to find its answer
       const questionRes = await chai.request(app)
         .get('/questions/next')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Cookie', `accessToken=${authToken}`);
 
       // Get the correct answer from the user's questions
       const user = await User.findOne({ username: testUser.username });
@@ -260,7 +255,7 @@ describe('Questions API', function() {
       // Submit the answer in UPPERCASE to test case-insensitivity
       const res = await chai.request(app)
         .post('/questions/answer')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `accessToken=${authToken}`)
         .send({
           answer: currentAnswer.toUpperCase(),
           responseTime: 2000
@@ -279,7 +274,7 @@ describe('Questions API', function() {
 
       const res = await chai.request(app)
         .get('/questions/stats/comparison')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Cookie', `accessToken=${authToken}`);
 
       expect(res).to.have.status(200);
       expect(res.body).to.have.property('comparison');
@@ -301,15 +296,11 @@ describe('Questions API - Edge Cases', function() {
 
   it('should handle non-existent user gracefully', async function() {
     // Create token for non-existent user
-    const fakeToken = jwt.sign(
-      { user: { id: '000000000000000000000000', username: 'nonexistent' } },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const fakeToken = generateAccessToken({ _id: '000000000000000000000000', username: 'nonexistent' });
 
     const res = await chai.request(app)
       .get('/questions/next')
-      .set('Authorization', `Bearer ${fakeToken}`);
+      .set('Cookie', `accessToken=${fakeToken}`);
 
     // Should return 401 since user doesn't exist (after JWT db lookup fix)
     expect(res.status).to.be.oneOf([401, 404, 500]);

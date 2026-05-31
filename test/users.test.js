@@ -178,6 +178,10 @@ describe('Users API - Password Validation', function() {
       .send({ username, password });
 
     expect(res).to.have.status(200);
-    expect(res.body).to.have.property('authToken');
+    // Auth migrated to httpOnly cookies: body returns the user, and the
+    // access token arrives via Set-Cookie (not in the response body).
+    expect(res.body).to.have.nested.property('user.username', username);
+    const cookies = res.headers['set-cookie'] || [];
+    expect(cookies.some(c => c.startsWith('accessToken='))).to.equal(true);
   });
 });

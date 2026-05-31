@@ -312,6 +312,12 @@ if (require.main === module) {
   mlService.initialize().catch(err => {
     logger.error('Failed to initialize ML service', { error: err.message });
   });
+
+  // Ensure the Qdrant collection exists (no-op when VECTOR_SEARCH_ENABLED=false).
+  const qdrantService = require('./ml/qdrant-service');
+  qdrantService.ensureCollection().catch(err => {
+    logger.error('Failed to ensure Qdrant collection', { error: err.message });
+  });
 }
 
 module.exports = { app };

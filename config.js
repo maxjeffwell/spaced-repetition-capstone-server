@@ -41,5 +41,28 @@ module.exports = {
   AI_LOCAL_URL: process.env.AI_LOCAL_URL || 'http://llama-cpu-service:8080/v1/chat/completions',
   AI_CLOUD_URL: process.env.AI_CLOUD_URL || 'https://api.openai.com/v1/chat/completions',
   AI_GATEWAY_URL: process.env.AI_GATEWAY_URL || 'http://shared-ai-gateway:8002',
-  AI_API_KEY: process.env.AI_API_KEY || ''
+  AI_API_KEY: process.env.AI_API_KEY || '',
+
+  // Vector search (Qdrant + OVMS embeddings) — see docs/superpowers/specs/2026-05-30-qdrant-related-cards-design.md
+  VECTOR_SEARCH_ENABLED: process.env.VECTOR_SEARCH_ENABLED === 'true',
+  QDRANT_URL: process.env.QDRANT_URL || 'http://qdrant.qdrant:6333',
+  QDRANT_API_KEY: process.env.QDRANT_API_KEY || '',
+  QDRANT_COLLECTION: process.env.QDRANT_COLLECTION || 'intervalai_cards',
+  // OVMS OpenAI-compatible embeddings endpoint (/v3/embeddings). e5-large is
+  // served on debian-marmoset's Intel iGPU in the `ovms` namespace.
+  OVMS_EMBED_URL: process.env.OVMS_EMBED_URL || 'http://ovms-embeddings.ovms:8000',
+  EMBED_MODEL_NAME: process.env.EMBED_MODEL_NAME || 'e5-large',
+  // e5 models expect a task prefix; "query: " is used for symmetric similarity.
+  EMBED_TEXT_PREFIX: process.env.EMBED_TEXT_PREFIX !== undefined
+    ? process.env.EMBED_TEXT_PREFIX
+    : 'query: ',
+  EMBED_DIM: parseInt(process.env.EMBED_DIM, 10) || 1024,
+  RELATED_K_DEFAULT: parseInt(process.env.RELATED_K_DEFAULT, 10) || 5,
+  RELATED_K_MAX: parseInt(process.env.RELATED_K_MAX, 10) || 20,
+  // e5-large (CLS-pooled) has a high cosine floor (~0.87 even for unrelated);
+  // related concepts land ~0.93-0.96. 0.85 drops only clear outliers and lets
+  // top-k ranking surface the best matches. Tune per observed score bands.
+  RELATED_MIN_SCORE: process.env.RELATED_MIN_SCORE !== undefined
+    ? parseFloat(process.env.RELATED_MIN_SCORE)
+    : 0.85
 };

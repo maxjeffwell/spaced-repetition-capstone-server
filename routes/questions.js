@@ -9,6 +9,10 @@ const logger = require('../utils/logger').child('Questions');
 const { validate } = require('../middleware/validation');
 const { NotFoundError } = require('../utils/errors');
 const { requireAuth } = require('../middleware/cookie-auth');
+const mongoose = require('mongoose');
+const config = require('../config');
+const { BadRequestError } = require('../utils/errors');
+const qdrantService = require('../ml/qdrant-service');
 
 const router = express.Router();
 
@@ -249,6 +253,50 @@ router.patch('/settings', requireAuth, async (req, res, next) => {
       message: 'Settings updated',
       settings: user.settings
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ========== GET RELATED CARDS ========== */
+router.get('/:id/related', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const cardId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(cardId)) {
+      throw new BadRequestError('The card `id` is not valid');
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const card = user.questions.id(cardId);
+    if (!card) {
+      throw new NotFoundError('Card not found');
+    }
+
+    if (!qdrantService.enabled) {
+      return res.json({ related: [] });
+    }
+
+    const requestedK = parseInt(req.query.k, 10);
+    const k = Math.min(
+      Number.isInteger(requestedK) && requestedK > 0 ? requestedK : config.RELATED_K_DEFAULT,
+      config.RELATED_K_MAX
+    );
+
+    let related = [];
+    try {
+      related = await qdrantService.related(cardId, userId, k, config.RELATED_MIN_SCORE);
+    } catch (err) {
+      logger.warn('Related lookup failed (returning empty)', { cardId, error: err.message });
+      related = [];
+    }
+
+    res.json({ related });
   } catch (err) {
     next(err);
   }

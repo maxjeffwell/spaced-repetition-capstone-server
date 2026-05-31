@@ -8,6 +8,7 @@ const createQuestions = require('../db/seed/questions');
 const logger = require('../utils/logger').child('Users');
 const { validate } = require('../middleware/validation');
 const { NotFoundError, BadRequestError, ConflictError } = require('../utils/errors');
+const qdrantService = require('../ml/qdrant-service');
 
 const router = express.Router();
 
@@ -37,6 +38,17 @@ router.post('/', validate('userRegistration'), async (req, res, next) => {
 
     const result = await User.create(newUser);
     logger.info('User created', { userId: result.id, username: result.username });
+
+    // Fire-and-forget: index the seeded deck into Qdrant. Never block or fail
+    // registration on the vector index (MongoDB is the system-of-record).
+    if (qdrantService.enabled) {
+      qdrantService.indexUserDeck(result).catch(err =>
+        logger.warn('Card indexing failed at registration', {
+          userId: result.id, error: err.message
+        })
+      );
+    }
+
     res.status(201).location(`/api/users/${result.id}`).json(result);
   } catch (err) {
     if (err.code === 11000) {

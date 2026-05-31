@@ -17,6 +17,7 @@
   "author": "IntervalAI Team",
   "license": "MIT",
   "dependencies": {
+    "@qdrant/js-client-rest": "^1.18.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-node": "^4.22.0",
     "@tensorflow/tfjs-node-gpu": "^4.22.0",
@@ -40,6 +41,7 @@
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
     "prom-client": "^15.1.0",
+    "uuid": "^14.0.0",
     "winston": "^3.19.0"
   },
   "devDependencies": {

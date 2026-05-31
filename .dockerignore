@@ -32,6 +32,8 @@ coverage/
 # ML Training data (optional - include if models are pre-trained)
 training-data/
 scripts/
+# ...but keep the backfill script in the image (run via `node scripts/backfill-embeddings.js`)
+!scripts/backfill-embeddings.js
 
 # Logs
 logs/

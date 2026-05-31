@@ -59,7 +59,10 @@ module.exports = {
   EMBED_DIM: parseInt(process.env.EMBED_DIM, 10) || 1024,
   RELATED_K_DEFAULT: parseInt(process.env.RELATED_K_DEFAULT, 10) || 5,
   RELATED_K_MAX: parseInt(process.env.RELATED_K_MAX, 10) || 20,
+  // e5-large (CLS-pooled) has a high cosine floor (~0.87 even for unrelated);
+  // related concepts land ~0.93-0.96. 0.85 drops only clear outliers and lets
+  // top-k ranking surface the best matches. Tune per observed score bands.
   RELATED_MIN_SCORE: process.env.RELATED_MIN_SCORE !== undefined
     ? parseFloat(process.env.RELATED_MIN_SCORE)
-    : 0.5
+    : 0.85
 };

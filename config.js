@@ -45,14 +45,18 @@ module.exports = {
 
   // Vector search (Qdrant + OVMS embeddings) — see docs/superpowers/specs/2026-05-30-qdrant-related-cards-design.md
   VECTOR_SEARCH_ENABLED: process.env.VECTOR_SEARCH_ENABLED === 'true',
-  QDRANT_URL: process.env.QDRANT_URL || 'http://qdrant:6333',
+  QDRANT_URL: process.env.QDRANT_URL || 'http://qdrant.qdrant:6333',
   QDRANT_API_KEY: process.env.QDRANT_API_KEY || '',
   QDRANT_COLLECTION: process.env.QDRANT_COLLECTION || 'intervalai_cards',
-  OVMS_EMBED_URL: process.env.OVMS_EMBED_URL || 'http://ovms-embed:8000',
-  EMBED_MODEL_NAME: process.env.EMBED_MODEL_NAME || 'text_embed',
-  EMBED_OUTPUT_NAME: process.env.EMBED_OUTPUT_NAME || 'last_hidden_state',
-  EMBED_TOKENIZER: process.env.EMBED_TOKENIZER || 'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
-  EMBED_DIM: parseInt(process.env.EMBED_DIM, 10) || 384,
+  // OVMS OpenAI-compatible embeddings endpoint (/v3/embeddings). e5-large is
+  // served on debian-marmoset's Intel iGPU in the `ovms` namespace.
+  OVMS_EMBED_URL: process.env.OVMS_EMBED_URL || 'http://ovms-embeddings.ovms:8000',
+  EMBED_MODEL_NAME: process.env.EMBED_MODEL_NAME || 'e5-large',
+  // e5 models expect a task prefix; "query: " is used for symmetric similarity.
+  EMBED_TEXT_PREFIX: process.env.EMBED_TEXT_PREFIX !== undefined
+    ? process.env.EMBED_TEXT_PREFIX
+    : 'query: ',
+  EMBED_DIM: parseInt(process.env.EMBED_DIM, 10) || 1024,
   RELATED_K_DEFAULT: parseInt(process.env.RELATED_K_DEFAULT, 10) || 5,
   RELATED_K_MAX: parseInt(process.env.RELATED_K_MAX, 10) || 20,
   RELATED_MIN_SCORE: process.env.RELATED_MIN_SCORE !== undefined

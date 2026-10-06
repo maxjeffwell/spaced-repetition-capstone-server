@@ -22,10 +22,14 @@ const {
  * @param {boolean} isCorrect - Was answer correct?
  * @param {number} responseTime - Time to answer in milliseconds
  * @param {Object} mlModel - Optional ML model for predictions
- * @param {number} clientPredictedInterval - Optional pre-calculated interval from client
+ * @param {Object|null} clientPrediction - Optional client (WebGPU) prediction:
+ *   { ifCorrect, ifIncorrect } -- one interval per possible outcome; the branch
+ *   matching `isCorrect` is applied. (v1 clients sent a single number computed
+ *   before grading; that is ignored so a wrong answer never inherits a
+ *   "correct" interval -- the server-side model is used instead.)
  * @returns {Object} Result with updated user and feedback
  */
-async function processAnswer(user, questionIndex, isCorrect, responseTime, mlModel = null, clientPredictedInterval = null) {
+async function processAnswer(user, questionIndex, isCorrect, responseTime, mlModel = null, clientPrediction = null) {
   const question = user.questions[questionIndex];
 
   // Always calculate baseline prediction for comparison
@@ -37,14 +41,16 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
   let mlInterval = null;
   let algorithmUsed;
 
-  // If client provided a prediction, use it
-  if (clientPredictedInterval !== null && clientPredictedInterval !== undefined) {
-    intervalUsed = clientPredictedInterval;
-    mlInterval = clientPredictedInterval;
+  const clientBranch = pickClientPrediction(clientPrediction, isCorrect);
+
+  // If client provided an outcome-aware prediction, use the matching branch
+  if (clientBranch !== null) {
+    intervalUsed = clientBranch;
+    mlInterval = clientBranch;
     algorithmUsed = 'webgpu';
 
     // Save ML recommendation (memoryStrength will be updated by updateLinkedList)
-    question.mlRecommendedInterval = clientPredictedInterval;
+    question.mlRecommendedInterval = clientBranch;
 
   } else {
     // Server-side prediction (legacy path)
@@ -61,7 +67,7 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
 
     if (mlModel && (algorithmUsed === 'ml' || algorithmMode === 'ab-test')) {
       try {
-        mlPrediction = await predictMLInterval(question, mlModel);
+        mlPrediction = await predictMLInterval(question, mlModel, isCorrect);
         mlInterval = mlPrediction.interval;
       } catch (error) {
         console.error('ML prediction failed, falling back to baseline:', error.message);
@@ -133,13 +139,25 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
  * @param {Object} mlModel - Trained ML model instance
  * @returns {Object} Prediction with interval
  */
-async function predictMLInterval(question, mlModel) {
+/**
+ * Pick the client-side prediction branch that matches the graded outcome.
+ * Returns an integer number of days, or null when there is no usable prediction.
+ * A bare number (v1 client, predicted before grading) is deliberately ignored.
+ */
+function pickClientPrediction(clientPrediction, isCorrect) {
+  if (!clientPrediction || typeof clientPrediction !== 'object') return null;
+  const value = isCorrect ? clientPrediction.ifCorrect : clientPrediction.ifIncorrect;
+  if (typeof value !== 'number' || !isFinite(value)) return null;
+  return Math.max(1, Math.round(value));
+}
+
+async function predictMLInterval(question, mlModel, isCorrect = null) {
   const { createFeatureVector } = require('../utils/question-helpers');
 
-  // Create feature vector from question
-  const features = createFeatureVector(question);
+  // Create feature vector from the card's state plus the graded outcome (v2 model input)
+  const features = createFeatureVector(question, isCorrect);
 
-  // Predict optimal interval (pass reviewHistory for advanced feature generation)
+  // Predict the next interval (reviewHistory is passed for API compatibility; v2 ignores it)
   const interval = await mlModel.predict(features, question.reviewHistory);
 
   return {
@@ -308,6 +326,7 @@ function checkMLReadiness(user) {
 
 module.exports = {
   processAnswer,
+  pickClientPrediction,
   predictMLInterval,
   updateUserStats,
   calculateNextReviewDate,

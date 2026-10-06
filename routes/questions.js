@@ -44,11 +44,11 @@ router.get('/next', requireAuth, async (req, res, next) => {
       ? nextQuestion.timesCorrect / totalReviews
       : 0;
 
-    // Calculate memoryStrength based on performance, not just database value
-    const baseInterval = nextQuestion.memoryStrength || 1;
-    const performanceMultiplier = 1 + (successRate * 0.5); // Up to 1.5x for perfect performance
-    const experienceBonus = Math.min(2, 1 + Math.log(totalReviews + 1) * 0.1); // Gradual increase
-    const calculatedMemoryStrength = Math.max(1, Math.min(90, baseInterval * performanceMultiplier * experienceBonus));
+    // memoryStrength as stored: updateLinkedList() already applied the performance and
+    // experience multipliers when it was written. (Until 2026-10-06 this re-applied both
+    // multipliers on top, so the browser saw up to 3x the value the server-side model
+    // used; the v2 model is trained on the stored scale, so send it as is.)
+    const calculatedMemoryStrength = Math.max(1, Math.min(90, nextQuestion.memoryStrength || 1));
 
     // Return question without answer, including features for client-side ML prediction
     res.json({
@@ -85,7 +85,7 @@ router.get('/next', requireAuth, async (req, res, next) => {
 router.post('/answer', requireAuth, validate('answer'), async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { answer, responseTime, predictedInterval, predictionTime } = req.body;
+    const { answer, responseTime, predictedInterval, predictedIntervals, predictionTime } = req.body;
 
     const user = await User.findById(userId);
 
@@ -105,27 +105,37 @@ router.post('/answer', requireAuth, validate('answer'), async (req, res, next) =
     const correctAnswer = question.answer.trim().toLowerCase();
     const isCorrect = userAnswer === correctAnswer;
 
-    // Use client-predicted interval if provided (and server prediction not forced), otherwise calculate server-side
+    // v2: the client predicts BOTH outcomes before grading ({ ifCorrect, ifIncorrect });
+    // the branch matching the graded answer is applied. A v1 single `predictedInterval`
+    // (computed before grading) is ignored -- it cannot depend on correctness.
     let result;
-    const useClientPrediction = !forceServerPrediction && predictedInterval !== null && predictedInterval !== undefined;
+    const hasClientBranches = predictedIntervals
+      && typeof predictedIntervals.ifCorrect === 'number'
+      && typeof predictedIntervals.ifIncorrect === 'number';
+    const useClientPrediction = !forceServerPrediction && hasClientBranches;
 
     if (useClientPrediction) {
-      logger.debug('Using client WebGPU prediction', {
-        predictedInterval,
+      logger.debug('Using client WebGPU prediction (outcome-aware)', {
+        predictedIntervals,
+        applied: isCorrect ? predictedIntervals.ifCorrect : predictedIntervals.ifIncorrect,
         predictionTimeMs: predictionTime?.toFixed(2)
       });
 
-      // Process answer with client-predicted interval
+      // Process answer with client-predicted intervals
       result = await processAnswer(
         user,
         questionIndex,
         isCorrect,
         responseTime,
         null, // No server ML model needed
-        predictedInterval // Use client prediction
+        predictedIntervals
       );
     } else {
-      logger.debug('No client prediction, using server-side ML/baseline');
+      if (predictedInterval !== null && predictedInterval !== undefined) {
+        logger.debug('Ignoring legacy single client prediction (not outcome-aware); using server-side ML', { predictedInterval });
+      } else {
+        logger.debug('No client prediction, using server-side ML/baseline');
+      }
 
       // Get ML model if available
       const mlModel = mlService.getModel();

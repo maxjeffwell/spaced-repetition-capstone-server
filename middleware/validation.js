@@ -27,7 +27,15 @@ const schemas = {
     answer: Joi.string().trim().max(1000).required(),
     responseTime: Joi.number().integer().min(0).max(300000).required()
       .messages({ 'number.max': 'Response time cannot exceed 5 minutes' }),
+    // Legacy (v1 clients): a single pre-grading prediction. Accepted but no longer
+    // applied -- it cannot depend on whether the answer was right.
     predictedInterval: Joi.number().min(1).max(365).optional(),
+    // v2 clients: one prediction per possible outcome; the server applies the one
+    // that matches the graded answer.
+    predictedIntervals: Joi.object({
+      ifCorrect: Joi.number().min(1).max(365).required(),
+      ifIncorrect: Joi.number().min(1).max(365).required()
+    }).optional(),
     predictionTime: Joi.number().min(0).max(10000).optional()
   }),
 

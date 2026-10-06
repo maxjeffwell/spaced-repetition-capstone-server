@@ -110,3 +110,6 @@ tensorboard/
 *.meta
 ml/tf-saved-model/
 ml/openvino-model/
+
+# v2 training matrix (regenerate with scripts/build-training-matrix.js)
+ml/training-matrix-v2.json

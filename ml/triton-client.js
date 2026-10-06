@@ -146,11 +146,11 @@ class TritonClient {
     async predict(baseFeatures, reviewHistory = null) {
         if (!this.isLoaded) await this.load();
 
-        // Convert 8 base features → 51 advanced features → array
+        // Convert base features (incl. `recalled`) -> v2 feature vector -> array
         const advancedFeatures = createAdvancedFeatureVector(baseFeatures, reviewHistory);
         const featureArray = getFeatureArray(advancedFeatures);
 
-        // Normalize the 51-element array
+        // Normalize (stats length must match the feature count of the served model)
         const normalizedFeatures = this.normalize(featureArray);
 
         console.log(`📊 Features: ${featureArray.length} (base: ${Object.keys(baseFeatures).length})`);
@@ -192,11 +192,14 @@ class TritonClient {
      * Predict using Triton REST API (KServe V2)
      */
     async predictTriton(url, normalizedFeatures) {
-        const response = await axios.post(`${url}/v2/models/${this.modelName}/versions/1/infer`, {
+        // No version in the path: the server (OVMS) serves its latest version, so a
+        // new model version only needs to be dropped into the model repository.
+        // Shape follows the feature vector (v1: 51, v2: 24).
+        const response = await axios.post(`${url}/v2/models/${this.modelName}/infer`, {
             "inputs": [
                 {
                     "name": "dense_input",
-                    "shape": [1, 51],
+                    "shape": [1, normalizedFeatures.length],
                     "datatype": "FP32",
                     "data": normalizedFeatures
                 }

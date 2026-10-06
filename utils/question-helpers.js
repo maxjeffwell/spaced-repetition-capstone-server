@@ -39,18 +39,21 @@ function calculateQuestionStats(question) {
 /**
  * Create feature vector for ML model from question data
  */
-function createFeatureVector(question) {
+function createFeatureVector(question, recalled = null) {
   const stats = calculateQuestionStats(question);
 
   return {
     memoryStrength: question.memoryStrength || 1,
     difficultyRating: question.difficultyRating || 0.5,
+    // Kept for callers that still read it; the v2 model does not use it.
     timeSinceLastReview: stats.daysSinceLastReview || 0,
     successRate: stats.successRate || 0,
     averageResponseTime: stats.averageResponseTime || 0,
     totalReviews: stats.totalReviews || 0,
     consecutiveCorrect: question.consecutiveCorrect || 0,
-    timeOfDay: new Date().getHours() / 24
+    timeOfDay: new Date().getHours() / 24,
+    // v2: the graded outcome of the current answer (null = unknown -> model assumes recalled)
+    recalled
   };
 }
 

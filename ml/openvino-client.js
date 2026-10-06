@@ -52,20 +52,12 @@ class OpenVINOClient {
     /**
      * Predict using OpenVINO Model Server REST API
      */
-    async predict(questionFeatures) {
+    async predict(questionFeatures, reviewHistory = null) {
         if (!this.isLoaded) await this.load();
 
-        // 8 features matching your training script
-        const featureArray = [
-            questionFeatures.memoryStrength,
-            questionFeatures.difficultyRating,
-            questionFeatures.timeSinceLastReview,
-            questionFeatures.successRate,
-            questionFeatures.averageResponseTime / 1000,
-            questionFeatures.totalReviews,
-            questionFeatures.consecutiveCorrect,
-            questionFeatures.timeOfDay
-        ];
+        // Same v2 feature vector as the Triton/KServe client (base features incl. `recalled`)
+        const { createAdvancedFeatureVector, getFeatureArray } = require('./advanced-features');
+        const featureArray = getFeatureArray(createAdvancedFeatureVector(questionFeatures, reviewHistory));
 
         const normalizedFeatures = this.normalize(featureArray);
 

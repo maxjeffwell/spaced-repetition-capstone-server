@@ -22,6 +22,15 @@ const { createAdvancedFeatureVector, getFeatureArray } = require('./advanced-fea
  * advanced-features.js); tier 1 is normalized here with the stats file, tier 2
  * normalizes internally with the same stats.
  */
+const MAX_INTERVAL_DAYS = 365;
+
+class NonFiniteOutputError extends Error {}
+
+/** Whole days, floored at 1 and capped at a year (matches the browser client's sanity rule). */
+function clampInterval(value) {
+  return Math.max(1, Math.min(MAX_INTERVAL_DAYS, Math.round(value)));
+}
+
 class InferenceClient {
   constructor(config = {}) {
     this.primaryUrl = config.primaryUrl || process.env.PRIMARY_TRITON_URL || 'http://ovms-embeddings.ovms:8000';
@@ -101,16 +110,25 @@ class InferenceClient {
       try {
         const interval = await this.predictOvms(baseFeatures, reviewHistory);
         this.lastBackend = 'ovms';
-        return Math.max(1, Math.round(interval));
+        return clampInterval(interval);
       } catch (err) {
-        console.error(`❌ OVMS inference failed (${err.message}); falling back to local model`);
-        this.markOvmsUnhealthy();
+        if (err instanceof NonFiniteOutputError) {
+          // Input-specific (seen on the GPU plugin for far-out-of-distribution cards):
+          // OVMS itself is fine, so do not route every prediction to tier 2 for 30 s.
+          console.warn(`⚠️ ${err.message}; using local model for this prediction`);
+        } else {
+          console.error(`❌ OVMS inference failed (${err.message}); falling back to local model`);
+          this.markOvmsUnhealthy();
+        }
       }
     }
 
     const interval = await this.predictLocal(baseFeatures, reviewHistory);
+    if (!Number.isFinite(interval)) {
+      throw new NonFiniteOutputError(`local model returned a non-finite interval (${interval})`);
+    }
     this.lastBackend = 'local';
-    return Math.max(1, Math.round(interval));
+    return clampInterval(interval);
   }
 
   async predictOvms(baseFeatures, reviewHistory) {
@@ -120,7 +138,13 @@ class InferenceClient {
     const response = await this.http.post(`${this.primaryUrl}/v2/models/${this.modelName}/infer`, {
       inputs: [{ name: 'dense_input', shape: [1, data.length], datatype: 'FP32', data }]
     }, { timeout: this.inferTimeoutMs });
-    return response.data.outputs[0].data[0];
+    // OVMS serializes NaN/Inf by dropping them: shape [1,1] with data []. Treat any
+    // missing or non-finite value as a non-finite result rather than returning undefined.
+    const value = response.data?.outputs?.[0]?.data?.[0];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new NonFiniteOutputError(`OVMS returned a non-finite interval (data=${JSON.stringify(response.data?.outputs?.[0]?.data)})`);
+    }
+    return value;
   }
 
   async predictLocal(baseFeatures, reviewHistory) {
@@ -142,4 +166,4 @@ class InferenceClient {
   }
 }
 
-module.exports = { InferenceClient };
+module.exports = { InferenceClient, NonFiniteOutputError, clampInterval, MAX_INTERVAL_DAYS };

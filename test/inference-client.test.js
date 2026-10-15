@@ -105,3 +105,37 @@ describe('InferenceClient (2-tier: OVMS -> local tfjs)', function() {
     expect(JSON.stringify(c)).to.not.match(/runpod/i);
   });
 });
+
+describe('InferenceClient non-finite output guard', function() {
+  function emptyOvms() {
+    const calls = { get: 0, post: 0 };
+    return { calls,
+      async get() { calls.get++; return { status: 200 }; },
+      // OVMS drops NaN/Inf from the JSON body: shape [1,1] but data []
+      async post() { calls.post++; return { data: { outputs: [{ name: 'output_0', shape: [1, 1], datatype: 'FP32', data: [] }] } }; } };
+  }
+  it('treats an empty/non-finite OVMS output as a miss and uses the local tier for that call', async function() {
+    const http = emptyOvms();
+    const local = fakeLocal({ value: 116 });
+    const c = makeClient(http, local);
+    expect(await c.predict(BASE)).to.equal(116);
+    expect(c.lastBackend).to.equal('local');
+  });
+  it('does not mark OVMS unhealthy for an input-specific non-finite result', async function() {
+    const http = emptyOvms();
+    const c = makeClient(http, fakeLocal({ value: 5 }));
+    await c.predict(BASE); await c.predict(BASE);
+    expect(http.calls.post).to.equal(2, 'OVMS is still tried on the next call');
+  });
+  it('rejects a non-finite local result instead of returning NaN', async function() {
+    const http = fakeHttp({ ready: false });
+    const c = makeClient(http, fakeLocal({ value: NaN }));
+    let err; try { await c.predict(BASE); } catch (e) { err = e; }
+    expect(err).to.be.an('error');
+    expect(err.message).to.match(/non-finite/i);
+  });
+  it('clamps predictions to 1..365 days', async function() {
+    expect(await makeClient(fakeHttp({ inferValue: 900 }), fakeLocal()).predict(BASE)).to.equal(365);
+    expect(await makeClient(fakeHttp({ inferValue: -3 }), fakeLocal()).predict(BASE)).to.equal(1);
+  });
+});

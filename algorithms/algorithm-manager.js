@@ -146,8 +146,16 @@ async function processAnswer(user, questionIndex, isCorrect, responseTime, mlMod
  */
 function pickClientPrediction(clientPrediction, isCorrect) {
   if (!clientPrediction || typeof clientPrediction !== 'object') return null;
-  const value = isCorrect ? clientPrediction.ifCorrect : clientPrediction.ifIncorrect;
-  if (typeof value !== 'number' || !isFinite(value)) return null;
+  return sanitizeInterval(isCorrect ? clientPrediction.ifCorrect : clientPrediction.ifIncorrect);
+}
+
+/**
+ * Integer number of days (>= 1) or null when the value is not a finite number.
+ * Every interval that reaches the schedule goes through here: a NaN/undefined
+ * interval fails the Mongoose Number cast silently and leaves intervalUsed unset.
+ */
+function sanitizeInterval(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return Math.max(1, Math.round(value));
 }
 
@@ -158,7 +166,10 @@ async function predictMLInterval(question, mlModel, isCorrect = null) {
   const features = createFeatureVector(question, isCorrect);
 
   // Predict the next interval (reviewHistory is passed for API compatibility; v2 ignores it)
-  const interval = await mlModel.predict(features, question.reviewHistory);
+  const interval = sanitizeInterval(await mlModel.predict(features, question.reviewHistory));
+  if (interval === null) {
+    throw new Error('ML model returned a non-finite interval');
+  }
 
   return {
     interval,
@@ -331,5 +342,6 @@ module.exports = {
   updateUserStats,
   calculateNextReviewDate,
   getAlgorithmComparison,
-  checkMLReadiness
+  checkMLReadiness,
+  sanitizeInterval
 };

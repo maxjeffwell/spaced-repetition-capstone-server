@@ -57,4 +57,42 @@ describe('QdrantService', function() {
     const out = await svc.related('507f1f77bcf86cd799439011', 'user1', 5, 0.5);
     expect(out).to.deep.equal([]);
   });
+
+  describe('ensureCollection replication', function() {
+    let created, updated;
+    beforeEach(function() {
+      created = []; updated = [];
+      svc.replicationFactor = 2;
+      svc.writeConsistencyFactor = 1;
+      svc.client.createCollection = async (coll, body) => { created.push({ coll, body }); };
+      svc.client.createPayloadIndex = async () => {};
+      svc.client.updateCollection = async (coll, body) => { updated.push({ coll, body }); };
+    });
+
+    it('creates a missing collection with replication_factor 2', async function() {
+      svc.client.getCollections = async () => ({ collections: [] });
+      await svc.ensureCollection();
+      expect(created).to.have.lengthOf(1);
+      expect(created[0].body).to.deep.include({ replication_factor: 2, write_consistency_factor: 1 });
+      expect(created[0].body.vectors).to.deep.equal({ size: svc.dim, distance: 'Cosine' });
+    });
+
+    it('raises replication_factor on an existing collection that has 1', async function() {
+      svc.client.getCollections = async () => ({ collections: [{ name: 'test_cards' }] });
+      svc.client.getCollection = async () => ({ config: { params: { replication_factor: 1, write_consistency_factor: 1 } } });
+      await svc.ensureCollection();
+      expect(created).to.have.lengthOf(0);
+      expect(updated).to.have.lengthOf(1);
+      expect(updated[0].coll).to.equal('test_cards');
+      expect(updated[0].body).to.deep.equal({ params: { replication_factor: 2, write_consistency_factor: 1 } });
+    });
+
+    it('leaves an existing collection alone when it already has replication_factor 2', async function() {
+      svc.client.getCollections = async () => ({ collections: [{ name: 'test_cards' }] });
+      svc.client.getCollection = async () => ({ config: { params: { replication_factor: 2, write_consistency_factor: 1 } } });
+      await svc.ensureCollection();
+      expect(created).to.have.lengthOf(0);
+      expect(updated).to.have.lengthOf(0);
+    });
+  });
 });

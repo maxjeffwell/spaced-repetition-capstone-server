@@ -11,6 +11,8 @@ class QdrantService {
     this.enabled = opts.enabled !== undefined ? opts.enabled : config.VECTOR_SEARCH_ENABLED;
     this.collection = opts.collection || config.QDRANT_COLLECTION;
     this.dim = opts.dim || config.EMBED_DIM;
+    this.replicationFactor = opts.replicationFactor || config.QDRANT_REPLICATION_FACTOR;
+    this.writeConsistencyFactor = opts.writeConsistencyFactor || config.QDRANT_WRITE_CONSISTENCY_FACTOR;
     this.embeddingClient = opts.embeddingClient || embeddingClient;
     this.client = null;
     if (this.enabled) {
@@ -21,7 +23,8 @@ class QdrantService {
     }
   }
 
-  // Create the collection + userId payload index if absent. Fail-open.
+  // Create the collection + userId payload index if absent, and make sure the
+  // collection carries the configured shard replication. Fail-open.
   async ensureCollection() {
     if (!this.enabled) return;
     try {
@@ -29,13 +32,37 @@ class QdrantService {
       const names = (existing.collections || []).map(c => c.name);
       if (!names.includes(this.collection)) {
         await this.client.createCollection(this.collection, {
-          vectors: { size: this.dim, distance: 'Cosine' }
+          vectors: { size: this.dim, distance: 'Cosine' },
+          replication_factor: this.replicationFactor,
+          write_consistency_factor: this.writeConsistencyFactor
         });
         await this.client.createPayloadIndex(this.collection, {
           field_name: 'userId',
           field_schema: 'keyword'
         });
-        logger.info('Created Qdrant collection', { collection: this.collection });
+        logger.info('Created Qdrant collection', {
+          collection: this.collection, replicationFactor: this.replicationFactor
+        });
+        return;
+      }
+      // Existing collection: replication_factor is an updatable param, so a
+      // collection created before replication was configured gets raised in
+      // place (no re-index needed; Qdrant replicates shards in the background
+      // once it runs as a cluster).
+      const info = await this.client.getCollection(this.collection);
+      const params = (info && info.config && info.config.params) || {};
+      if ((params.replication_factor || 1) < this.replicationFactor) {
+        await this.client.updateCollection(this.collection, {
+          params: {
+            replication_factor: this.replicationFactor,
+            write_consistency_factor: this.writeConsistencyFactor
+          }
+        });
+        logger.info('Raised Qdrant collection replication', {
+          collection: this.collection,
+          from: params.replication_factor || 1,
+          to: this.replicationFactor
+        });
       }
     } catch (err) {
       logger.error('ensureCollection failed (continuing)', { error: err.message });

@@ -48,6 +48,10 @@ module.exports = {
   QDRANT_URL: process.env.QDRANT_URL || 'http://qdrant.qdrant:6333',
   QDRANT_API_KEY: process.env.QDRANT_API_KEY || '',
   QDRANT_COLLECTION: process.env.QDRANT_COLLECTION || 'intervalai_cards',
+  // Shard replication for the collection. Only takes effect once Qdrant runs
+  // in distributed mode (planned 3-node cluster); harmless on a single node.
+  QDRANT_REPLICATION_FACTOR: parseInt(process.env.QDRANT_REPLICATION_FACTOR, 10) || 2,
+  QDRANT_WRITE_CONSISTENCY_FACTOR: parseInt(process.env.QDRANT_WRITE_CONSISTENCY_FACTOR, 10) || 1,
   // OVMS OpenAI-compatible embeddings endpoint (/v3/embeddings). e5-large is
   // served on debian-marmoset's Intel iGPU in the `ovms` namespace.
   OVMS_EMBED_URL: process.env.OVMS_EMBED_URL || 'http://ovms-embeddings.ovms:8000',

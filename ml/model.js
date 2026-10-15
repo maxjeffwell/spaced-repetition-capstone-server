@@ -227,7 +227,9 @@ class IntervalPredictionModel {
       averageResponseTime: questionFeatures.averageResponseTime,
       totalReviews: questionFeatures.totalReviews,
       consecutiveCorrect: questionFeatures.consecutiveCorrect,
-      timeOfDay: questionFeatures.timeOfDay
+      timeOfDay: questionFeatures.timeOfDay,
+      // v2 is outcome-aware: keep the graded outcome when the caller supplies it
+      recalled: questionFeatures.recalled
     };
 
     // Generate advanced features

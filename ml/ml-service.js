@@ -9,7 +9,7 @@
 
 const IntervalPredictionModel = require('./model');
 const OpenVINOClient = require('./openvino-client');
-const TritonClient = require('./triton-client');
+const { InferenceClient } = require('./inference-client');
 const path = require('path');
 const logger = require('../utils/logger').child('MLService');
 
@@ -40,12 +40,14 @@ class MLService {
 
     try {
       if (this.useTriton) {
-        logger.info('Loading Triton Model Client');
-        this.model = new TritonClient();
+        // USE_TRITON is kept for compatibility with the Helm values; the client is
+        // 2-tier: OVMS (KServe v2) on the Intel iGPU -> local tfjs copy of the model.
+        logger.info('Loading inference client (OVMS -> local tfjs)');
+        this.model = new InferenceClient();
         await this.model.load();
         this.isReady = true;
         this.isLoading = false;
-        logger.info('Triton Inference Server client ready');
+        logger.info('Inference client ready', { tiers: this.model.tiers(), primaryUrl: this.model.primaryUrl });
         return;
       }
 

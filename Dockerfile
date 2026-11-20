@@ -4,7 +4,7 @@
 # ============================================ 
 # Development Stage
 # ============================================ 
-FROM node:20-slim AS development
+FROM node:24-slim AS development
 
 # Set environment variables
 ENV NODE_ENV=development
@@ -37,7 +37,7 @@ CMD ["npm", "run", "dev"]
 # ============================================ 
 # Production Stage
 # ============================================ 
-FROM node:20-slim AS production
+FROM node:24-slim AS production
 
 # Set environment variables
 ENV NODE_ENV=production

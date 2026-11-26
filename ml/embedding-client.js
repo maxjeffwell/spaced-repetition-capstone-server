@@ -27,6 +27,7 @@ class EmbeddingClient {
     this.baseUrl = opts.baseUrl || config.OVMS_EMBED_URL;
     this.modelName = opts.modelName || config.EMBED_MODEL_NAME;
     this.prefix = opts.prefix !== undefined ? opts.prefix : config.EMBED_TEXT_PREFIX;
+    this.timeoutMs = opts.timeoutMs || config.EMBED_TIMEOUT_MS;
   }
 
   /**
@@ -38,7 +39,7 @@ class EmbeddingClient {
     const resp = await axios.post(
       `${this.baseUrl}/v3/embeddings`,
       { model: this.modelName, input: `${this.prefix}${text}` },
-      { timeout: 10000 }
+      { timeout: this.timeoutMs }
     );
 
     const vec = resp.data && resp.data.data && resp.data.data[0]

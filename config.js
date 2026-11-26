@@ -61,6 +61,10 @@ module.exports = {
     ? process.env.EMBED_TEXT_PREFIX
     : 'query: ',
   EMBED_DIM: parseInt(process.env.EMBED_DIM, 10) || 1024,
+  // The model server unloads idle models and loads them lazily: a normal wake-up
+  // takes about 4 s, but the first request after a server restart pays the full
+  // GPU compile (measured 13-15 s). 10 s was too short for that one request.
+  EMBED_TIMEOUT_MS: parseInt(process.env.EMBED_TIMEOUT_MS, 10) || 30000,
   RELATED_K_DEFAULT: parseInt(process.env.RELATED_K_DEFAULT, 10) || 5,
   RELATED_K_MAX: parseInt(process.env.RELATED_K_MAX, 10) || 20,
   // e5-large (CLS-pooled) has a high cosine floor (~0.87 even for unrelated);

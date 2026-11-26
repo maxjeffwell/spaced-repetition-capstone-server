@@ -38,6 +38,17 @@ describe('EmbeddingClient.embed', function() {
     expect(vec[0]).to.be.closeTo(0.6, 1e-6);
   });
 
+  it('waits up to 30 s by default and honours a custom timeout', async function() {
+    const seen = [];
+    axios.post = async (url, body, opts) => {
+      seen.push(opts.timeout);
+      return { data: { data: [{ embedding: [1, 0] }] } };
+    };
+    await new EmbeddingClient({ baseUrl: 'http://ovms', modelName: 'e5-large', prefix: '' }).embed('x');
+    await new EmbeddingClient({ baseUrl: 'http://ovms', modelName: 'e5-large', prefix: '', timeoutMs: 5000 }).embed('x');
+    expect(seen).to.deep.equal([30000, 5000]);
+  });
+
   it('throws when the response has no embedding', async function() {
     axios.post = async () => ({ data: { data: [] } });
     const client = new EmbeddingClient({ baseUrl: 'http://ovms', modelName: 'e5-large', prefix: '' });
